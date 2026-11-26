@@ -78,133 +78,171 @@
     </div>
   </main>
 
-  <!-- Food Catalog View -->
+  <!-- Food Catalog View: Options on Left + Separate Food List Table on Right -->
   <main id="tab-catalog" class="tab-content">
-    <div class="card">
-      <div class="catalog-top-row">
-        <input type="search" id="searchInput" placeholder="Search foods (e.g., Apple, Kimas, Baguette)..." />
-        <div class="sort-controls">
-          <span id="sortSummaryBadge" class="sort-summary">Sorted by: <strong>Health Score ↓</strong> <span class="hint-inline">(click any column header)</span></span>
-          <button type="button" id="sortDirBtn" class="btn btn-ghost" data-dir="desc" title="Toggle sort direction">↓ Desc</button>
-        </div>
-      </div>
-
-      <div class="filter-grid">
-        <div class="inline-field filter-card" data-filter-col="nutri">
-          <div class="filter-label-row">
-            <span>Nutri</span>
-            <span class="filter-badge hidden" id="badgeNutri">Filtered</span>
-          </div>
-          <select id="filterNutri">
-            <option value="ALL" selected>All (A–E)</option>
-            <option value="A">A</option>
-            <option value="B">B</option>
-            <option value="C">C</option>
-            <option value="D">D</option>
-            <option value="E">E</option>
-          </select>
+    <div class="catalog-split-layout">
+      <!-- Left Hand Side: Options Table -->
+      <aside class="card options-sidebar">
+        <div class="options-header">
+          <h2>Options</h2>
+          <button type="button" id="resetFiltersBtn" class="btn btn-ghost">Reset</button>
         </div>
 
-        <div class="inline-field filter-card" data-filter-col="yuka">
-          <div class="filter-label-row">
-            <span>Yuka</span>
-            <span class="filter-badge hidden" id="badgeYuka">Filtered</span>
-          </div>
-          <div class="op-val-group">
-            <select id="opYuka">
-              <option value="any" selected>Any</option>
-              <option value="gte">&gt;=</option>
-              <option value="lte">&lt;=</option>
-            </select>
-            <input type="number" id="valYuka" step="any" placeholder="0–100" />
-          </div>
+        <table class="options-table">
+          <tbody>
+            <tr>
+              <th>Search</th>
+              <td>
+                <input type="search" id="searchInput" placeholder="Search foods..." />
+              </td>
+            </tr>
+            <tr>
+              <th>Sort</th>
+              <td>
+                <div class="sort-controls">
+                  <span id="sortSummaryBadge" class="sort-summary"><strong>Health Score ↓</strong></span>
+                  <button type="button" id="sortDirBtn" class="btn btn-ghost" data-dir="desc" title="Toggle sort direction">↓ Desc</button>
+                </div>
+              </td>
+            </tr>
+            <tr class="filter-row" data-filter-col="nutri">
+              <th>
+                <div class="filter-label-row">
+                  <span>Nutri</span>
+                  <span class="filter-badge hidden" id="badgeNutri">Filtered</span>
+                </div>
+              </th>
+              <td>
+                <select id="filterNutri">
+                  <option value="ALL" selected>All (A–E)</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                  <option value="E">E</option>
+                </select>
+              </td>
+            </tr>
+            <tr class="filter-row" data-filter-col="yuka">
+              <th>
+                <div class="filter-label-row">
+                  <span>Yuka</span>
+                  <span class="filter-badge hidden" id="badgeYuka">Filtered</span>
+                </div>
+              </th>
+              <td>
+                <div class="op-val-group">
+                  <select id="opYuka">
+                    <option value="any" selected>Any</option>
+                    <option value="gte">&gt;=</option>
+                    <option value="lte">&lt;=</option>
+                  </select>
+                  <input type="number" id="valYuka" step="any" placeholder="0–100" />
+                </div>
+              </td>
+            </tr>
+            <tr class="filter-row" data-filter-col="off">
+              <th>
+                <div class="filter-label-row">
+                  <span>Open Food Facts</span>
+                  <span class="filter-badge hidden" id="badgeOff">Filtered</span>
+                </div>
+              </th>
+              <td>
+                <div class="op-val-group">
+                  <select id="opOff">
+                    <option value="any" selected>Any</option>
+                    <option value="gte">&gt;=</option>
+                    <option value="lte">&lt;=</option>
+                  </select>
+                  <input type="number" id="valOff" step="any" placeholder="0–100" />
+                </div>
+              </td>
+            </tr>
+            <tr class="filter-row" data-filter-col="epi">
+              <th>
+                <div class="filter-label-row">
+                  <span>Epi Score</span>
+                  <span class="filter-badge hidden" id="badgeEpi">Filtered</span>
+                </div>
+              </th>
+              <td>
+                <div class="op-val-group">
+                  <select id="opEpi">
+                    <option value="any" selected>Any</option>
+                    <option value="gte">&gt;=</option>
+                    <option value="lte">&lt;=</option>
+                  </select>
+                  <input type="number" id="valEpi" step="any" placeholder="0–100" />
+                </div>
+              </td>
+            </tr>
+            <tr class="filter-row" data-filter-col="healthScore">
+              <th>
+                <div class="filter-label-row">
+                  <span>Health Score</span>
+                  <span class="filter-badge hidden" id="badgeHealth">Filtered</span>
+                </div>
+              </th>
+              <td>
+                <div class="op-val-group">
+                  <select id="opHealth">
+                    <option value="any" selected>Any</option>
+                    <option value="gte">&gt;=</option>
+                    <option value="lte">&lt;=</option>
+                  </select>
+                  <input type="number" id="valHealth" step="any" placeholder="0–100" />
+                </div>
+              </td>
+            </tr>
+            <tr class="filter-row" data-filter-col="impact">
+              <th>
+                <div class="filter-label-row">
+                  <span>Dietary Impact</span>
+                  <span class="filter-badge hidden" id="badgeImpact">Filtered</span>
+                </div>
+              </th>
+              <td>
+                <div class="op-val-group">
+                  <select id="opImpact">
+                    <option value="any" selected>Any</option>
+                    <option value="gte">&gt;=</option>
+                    <option value="lte">&lt;=</option>
+                  </select>
+                  <input type="number" id="valImpact" step="any" placeholder="Score" />
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th>Columns</th>
+              <td>
+                <div class="column-toggles" id="columnToggles">
+                  <label class="col-chip"><input type="checkbox" data-col="nutri" checked /> Nutri</label>
+                  <label class="col-chip"><input type="checkbox" data-col="yuka" checked /> Yuka</label>
+                  <label class="col-chip"><input type="checkbox" data-col="off" checked /> OFF</label>
+                  <label class="col-chip"><input type="checkbox" data-col="epi" checked /> Epi</label>
+                  <label class="col-chip"><input type="checkbox" data-col="healthScore" checked /> Health</label>
+                  <label class="col-chip"><input type="checkbox" data-col="impact" checked /> Impact</label>
+                </div>
+                <div class="column-group-row">
+                  <label class="col-chip col-chip-group"><input type="checkbox" id="toggleNutrientsGroup" /> Nutrients</label>
+                  <label class="col-chip col-chip-group"><input type="checkbox" id="toggleEnergyGroup" /> Energy</label>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </aside>
+
+      <!-- Right Hand Side: Separate Food List Table -->
+      <section class="card food-list-panel">
+        <div class="food-list-header">
+          <h2>Food List</h2>
+          <span id="filteredCount" class="hint">Showing 0 foods</span>
         </div>
-
-        <div class="inline-field filter-card" data-filter-col="off">
-          <div class="filter-label-row">
-            <span>Open Food Facts</span>
-            <span class="filter-badge hidden" id="badgeOff">Filtered</span>
-          </div>
-          <div class="op-val-group">
-            <select id="opOff">
-              <option value="any" selected>Any</option>
-              <option value="gte">&gt;=</option>
-              <option value="lte">&lt;=</option>
-            </select>
-            <input type="number" id="valOff" step="any" placeholder="0–100" />
-          </div>
-        </div>
-
-        <div class="inline-field filter-card" data-filter-col="epi">
-          <div class="filter-label-row">
-            <span>Epi Score</span>
-            <span class="filter-badge hidden" id="badgeEpi">Filtered</span>
-          </div>
-          <div class="op-val-group">
-            <select id="opEpi">
-              <option value="any" selected>Any</option>
-              <option value="gte">&gt;=</option>
-              <option value="lte">&lt;=</option>
-            </select>
-            <input type="number" id="valEpi" step="any" placeholder="0–100" />
-          </div>
-        </div>
-
-        <div class="inline-field filter-card" data-filter-col="healthScore">
-          <div class="filter-label-row">
-            <span>Health Score</span>
-            <span class="filter-badge hidden" id="badgeHealth">Filtered</span>
-          </div>
-          <div class="op-val-group">
-            <select id="opHealth">
-              <option value="any" selected>Any</option>
-              <option value="gte">&gt;=</option>
-              <option value="lte">&lt;=</option>
-            </select>
-            <input type="number" id="valHealth" step="any" placeholder="0–100" />
-          </div>
-        </div>
-
-        <div class="inline-field filter-card" data-filter-col="impact">
-          <div class="filter-label-row">
-            <span>Dietary Impact</span>
-            <span class="filter-badge hidden" id="badgeImpact">Filtered</span>
-          </div>
-          <div class="op-val-group">
-            <select id="opImpact">
-              <option value="any" selected>Any</option>
-              <option value="gte">&gt;=</option>
-              <option value="lte">&lt;=</option>
-            </select>
-            <input type="number" id="valImpact" step="any" placeholder="Score" />
-          </div>
-        </div>
-      </div>
-
-      <!-- Column Visibility Picker (6 Core Columns + Nutrients & Energy Groups) -->
-      <div class="column-picker">
-        <span class="column-picker-title">Columns to Show</span>
-        <div class="column-toggles" id="columnToggles">
-          <label class="col-chip"><input type="checkbox" data-col="nutri" checked /> Nutri</label>
-          <label class="col-chip"><input type="checkbox" data-col="yuka" checked /> Yuka</label>
-          <label class="col-chip"><input type="checkbox" data-col="off" checked /> OFF</label>
-          <label class="col-chip"><input type="checkbox" data-col="epi" checked /> Epi Score</label>
-          <label class="col-chip"><input type="checkbox" data-col="healthScore" checked /> Health Score</label>
-          <label class="col-chip"><input type="checkbox" data-col="impact" checked /> Dietary Impact</label>
-        </div>
-
-        <div class="column-group-row">
-          <label class="col-chip col-chip-group"><input type="checkbox" id="toggleNutrientsGroup" /> Nutrients (Lookup)</label>
-          <label class="col-chip col-chip-group"><input type="checkbox" id="toggleEnergyGroup" /> Energy &amp; Macros (Lookup)</label>
-        </div>
-      </div>
-
-      <div class="catalog-meta-bar">
-        <span id="filteredCount" class="hint">Showing 0 foods</span>
-        <button type="button" id="resetFiltersBtn" class="btn btn-ghost">Reset Filters</button>
-      </div>
-
-      <div id="foodList" class="table-wrap"></div>
+        <p class="hint">Click any column header to sort. Click the active column again to flip direction.</p>
+        <div id="foodList" class="table-wrap"></div>
+      </section>
     </div>
   </main>
 

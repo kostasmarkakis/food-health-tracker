@@ -401,14 +401,14 @@ function updateFilterIndicators(filterDetails) {
   indicatorMap.forEach(({ key, badgeId }) => {
     const detail = filterDetails[key];
     const badge = document.getElementById(badgeId);
-    const card = document.querySelector(`.filter-card[data-filter-col="${key}"]`);
+    const row = document.querySelector(`.filter-row[data-filter-col="${key}"]`);
     if (detail) {
       badge.textContent = detail;
       badge.classList.remove("hidden");
-      if (card) card.classList.add("is-filtered");
+      if (row) row.classList.add("is-filtered");
     } else {
       badge.classList.add("hidden");
-      if (card) card.classList.remove("is-filtered");
+      if (row) row.classList.remove("is-filtered");
     }
   });
 }
@@ -542,7 +542,7 @@ function renderCatalog() {
   const activeColDef = ALL_COLUMN_DEFS.find(c => c.key === sortField);
   const sortLabel = sortField === "name" ? "Product" : (activeColDef ? activeColDef.label : sortField);
   document.getElementById("sortSummaryBadge").innerHTML =
-    `Sorted by: <strong>${escapeHtml(sortLabel)} ${arrow}</strong> <span class="hint-inline">(click any column header)</span>`;
+    `<strong>${escapeHtml(sortLabel)} ${arrow}</strong>`;
 
   const filtered = foods
     .filter((f) => {
@@ -559,11 +559,11 @@ function renderCatalog() {
 
   const filteredColsCount = Object.keys(filterDetails).length;
   const filterSummaryText = filteredColsCount > 0
-    ? ` • ${filteredColsCount} column filter${filteredColsCount > 1 ? "s" : ""} active`
+    ? ` • ${filteredColsCount} filtered`
     : "";
 
   document.getElementById("filteredCount").textContent =
-    `Showing ${filtered.length} of ${foods.length} foods${filterSummaryText}`;
+    `Showing ${filtered.length} of ${foods.length}${filterSummaryText}`;
 
   if (filtered.length === 0) {
     document.getElementById("foodList").innerHTML = `<p class="hint" style="padding:12px;">No matching foods found.</p>`;
