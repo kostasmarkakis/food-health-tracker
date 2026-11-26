@@ -62,47 +62,41 @@ function parseNum(val) {
   return Number.isFinite(n) ? n : null;
 }
 
-// --- Top Scrollbar & Slider Sync ---
-function syncTopScrollControls() {
+// --- Top Scrollbar Sync ---
+function syncTopScrollBar() {
   const wrap = document.getElementById("foodList");
-  const controls = document.getElementById("topScrollControls");
   const topBar = document.getElementById("topScrollBar");
   const topInner = document.getElementById("topScrollInner");
-  const slider = document.getElementById("topScrollSlider");
   const table = wrap.querySelector(".food-table");
 
   if (!table) {
-    controls.classList.add("hidden");
+    topBar.classList.add("hidden");
     return;
   }
 
   const maxScroll = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
   if (maxScroll <= 2) {
-    controls.classList.add("hidden");
+    topBar.classList.add("hidden");
     wrap.scrollLeft = 0;
     return;
   }
 
-  controls.classList.remove("hidden");
+  topBar.classList.remove("hidden");
   topInner.style.width = `${wrap.scrollWidth}px`;
-  slider.max = String(Math.round(maxScroll));
 
   isSyncingScroll = true;
   topBar.scrollLeft = wrap.scrollLeft;
-  slider.value = String(Math.round(wrap.scrollLeft));
   isSyncingScroll = false;
 }
 
 function initScrollSyncListeners() {
   const wrap = document.getElementById("foodList");
   const topBar = document.getElementById("topScrollBar");
-  const slider = document.getElementById("topScrollSlider");
 
   wrap.addEventListener("scroll", () => {
     if (isSyncingScroll) return;
     isSyncingScroll = true;
     topBar.scrollLeft = wrap.scrollLeft;
-    slider.value = String(Math.round(wrap.scrollLeft));
     isSyncingScroll = false;
   });
 
@@ -110,20 +104,11 @@ function initScrollSyncListeners() {
     if (isSyncingScroll) return;
     isSyncingScroll = true;
     wrap.scrollLeft = topBar.scrollLeft;
-    slider.value = String(Math.round(topBar.scrollLeft));
-    isSyncingScroll = false;
-  });
-
-  slider.addEventListener("input", () => {
-    const val = Number(slider.value);
-    isSyncingScroll = true;
-    wrap.scrollLeft = val;
-    topBar.scrollLeft = val;
     isSyncingScroll = false;
   });
 
   window.addEventListener("resize", () => {
-    requestAnimationFrame(syncTopScrollControls);
+    requestAnimationFrame(syncTopScrollBar);
   });
 }
 
@@ -635,7 +620,7 @@ function renderCatalog() {
 
   if (filtered.length === 0) {
     container.innerHTML = `<p class="hint" style="padding:12px;">No matching foods found.</p>`;
-    syncTopScrollControls();
+    syncTopScrollBar();
     return;
   }
 
@@ -705,7 +690,7 @@ function renderCatalog() {
     });
   });
 
-  requestAnimationFrame(syncTopScrollControls);
+  requestAnimationFrame(syncTopScrollBar);
 }
 
 document.querySelectorAll('#columnToggles input[type="checkbox"]').forEach((cb) => {
@@ -876,7 +861,7 @@ function switchTab(tabName) {
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tabName));
   document.querySelectorAll(".tab-content").forEach(c => c.classList.toggle("active", c.id === `tab-${tabName}`));
   if (tabName === "catalog") {
-    requestAnimationFrame(syncTopScrollControls);
+    requestAnimationFrame(syncTopScrollBar);
   }
 }
 

@@ -320,49 +320,22 @@ input, select {
   accent-color: var(--accent);
 }
 
-/* Top Scroll Bar & Slider */
-.top-scroll-controls {
-  margin-top: 8px;
-  padding: 8px 10px;
-  background: var(--bg);
-  border-radius: 10px;
-  border: 1px solid var(--surface-alt);
-}
-
+/* Single Synced Top Scrollbar */
 .top-scroll-bar {
+  margin-top: 8px;
   overflow-x: auto;
   overflow-y: hidden;
-  height: 12px;
-  margin-bottom: 6px;
+  height: 14px;
+  border-radius: 8px;
+  background: var(--bg);
 }
 
 .top-scroll-inner {
   height: 1px;
 }
 
-.top-slider-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.slider-label {
-  font-size: 0.72rem;
-  color: var(--muted);
-  white-space: nowrap;
-  user-select: none;
-}
-
-#topScrollSlider {
-  flex: 1;
-  margin-top: 0;
-  padding: 0;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-
 .table-wrap {
-  margin-top: 8px;
+  margin-top: 6px;
   overflow-x: auto;
   border-radius: 10px;
   background: var(--bg);
