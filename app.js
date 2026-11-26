@@ -49,6 +49,7 @@ let headerMap = {};
 let sheetSummary = {};
 let html5QrCode = null;
 let currentSortField = "healthScore";
+let isSyncingScroll = false;
 
 function normKey(str) {
   return String(str || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -59,6 +60,71 @@ function parseNum(val) {
   const cleaned = String(val).replace(/,/g, "").replace("%", "").trim();
   const n = parseFloat(cleaned);
   return Number.isFinite(n) ? n : null;
+}
+
+// --- Top Scrollbar & Slider Sync ---
+function syncTopScrollControls() {
+  const wrap = document.getElementById("foodList");
+  const controls = document.getElementById("topScrollControls");
+  const topBar = document.getElementById("topScrollBar");
+  const topInner = document.getElementById("topScrollInner");
+  const slider = document.getElementById("topScrollSlider");
+  const table = wrap.querySelector(".food-table");
+
+  if (!table) {
+    controls.classList.add("hidden");
+    return;
+  }
+
+  const maxScroll = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
+  if (maxScroll <= 2) {
+    controls.classList.add("hidden");
+    wrap.scrollLeft = 0;
+    return;
+  }
+
+  controls.classList.remove("hidden");
+  topInner.style.width = `${wrap.scrollWidth}px`;
+  slider.max = String(Math.round(maxScroll));
+
+  isSyncingScroll = true;
+  topBar.scrollLeft = wrap.scrollLeft;
+  slider.value = String(Math.round(wrap.scrollLeft));
+  isSyncingScroll = false;
+}
+
+function initScrollSyncListeners() {
+  const wrap = document.getElementById("foodList");
+  const topBar = document.getElementById("topScrollBar");
+  const slider = document.getElementById("topScrollSlider");
+
+  wrap.addEventListener("scroll", () => {
+    if (isSyncingScroll) return;
+    isSyncingScroll = true;
+    topBar.scrollLeft = wrap.scrollLeft;
+    slider.value = String(Math.round(wrap.scrollLeft));
+    isSyncingScroll = false;
+  });
+
+  topBar.addEventListener("scroll", () => {
+    if (isSyncingScroll) return;
+    isSyncingScroll = true;
+    wrap.scrollLeft = topBar.scrollLeft;
+    slider.value = String(Math.round(topBar.scrollLeft));
+    isSyncingScroll = false;
+  });
+
+  slider.addEventListener("input", () => {
+    const val = Number(slider.value);
+    isSyncingScroll = true;
+    wrap.scrollLeft = val;
+    topBar.scrollLeft = val;
+    isSyncingScroll = false;
+  });
+
+  window.addEventListener("resize", () => {
+    requestAnimationFrame(syncTopScrollControls);
+  });
 }
 
 // --- Settings & Column Visibility Persistence ---
@@ -565,13 +631,17 @@ function renderCatalog() {
   document.getElementById("filteredCount").textContent =
     `Showing ${filtered.length} of ${foods.length}${filterSummaryText}`;
 
+  const container = document.getElementById("foodList");
+
   if (filtered.length === 0) {
-    document.getElementById("foodList").innerHTML = `<p class="hint" style="padding:12px;">No matching foods found.</p>`;
+    container.innerHTML = `<p class="hint" style="padding:12px;">No matching foods found.</p>`;
+    syncTopScrollControls();
     return;
   }
 
   const isNameSorted = sortField === "name";
-  const nameThClass = isNameSorted ? ' class="sortable-th sorted-col"' : ' class="sortable-th"';
+  const nameThClasses = ["sortable-th", "sticky-col"];
+  if (isNameSorted) nameThClasses.push("sorted-col");
   const nameIndicator = isNameSorted ? `<span class="sort-indicator">${arrow}</span>` : "";
 
   const headerCells = activeCols.map((col) => {
@@ -590,24 +660,24 @@ function renderCatalog() {
   }).join("");
 
   const bodyRows = filtered.map((f) => {
-    const nameCellClass = isNameSorted ? ' class="sorted-col-cell"' : "";
+    const nameCellClasses = ["sticky-col"];
+    if (isNameSorted) nameCellClasses.push("sorted-col-cell");
     const metricCells = activeCols
       .map((col) => renderColumnCell(f, col.key, col.key === sortField, Boolean(filterDetails[col.key])))
       .join("");
     return `
       <tr>
-        <td${nameCellClass}><strong>${escapeHtml(f.name)}</strong></td>
+        <td class="${nameCellClasses.join(" ")}"><strong>${escapeHtml(f.name)}</strong></td>
         ${metricCells}
       </tr>
     `;
   }).join("");
 
-  const container = document.getElementById("foodList");
   container.innerHTML = `
     <table class="food-table">
       <thead>
         <tr>
-          <th${nameThClass} data-sort-col="name">Product${nameIndicator}</th>
+          <th class="${nameThClasses.join(" ")}" data-sort-col="name">Product${nameIndicator}</th>
           ${headerCells}
         </tr>
       </thead>
@@ -634,6 +704,8 @@ function renderCatalog() {
       renderCatalog();
     });
   });
+
+  requestAnimationFrame(syncTopScrollControls);
 }
 
 document.querySelectorAll('#columnToggles input[type="checkbox"]').forEach((cb) => {
@@ -803,6 +875,9 @@ async function lookupOpenFoodFacts(barcode) {
 function switchTab(tabName) {
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tabName));
   document.querySelectorAll(".tab-content").forEach(c => c.classList.toggle("active", c.id === `tab-${tabName}`));
+  if (tabName === "catalog") {
+    requestAnimationFrame(syncTopScrollControls);
+  }
 }
 
 document.querySelectorAll(".tab").forEach(btn => {
@@ -816,6 +891,7 @@ function escapeHtml(str) {
 window.addEventListener("load", () => {
   loadSettingsUI();
   syncColumnControls();
+  initScrollSyncListeners();
   updatePreview();
   setTimeout(initGoogleAuth, 600);
 });

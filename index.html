@@ -240,7 +240,20 @@
           <h2>Food List</h2>
           <span id="filteredCount" class="hint">Showing 0 foods</span>
         </div>
-        <p class="hint">Click any column header to sort. Click the active column again to flip direction.</p>
+        <p class="hint">Click any column header to sort. Product column stays frozen while panning left/right.</p>
+
+        <!-- Top Horizontal Scroll Bar & Slider -->
+        <div id="topScrollControls" class="top-scroll-controls hidden">
+          <div id="topScrollBar" class="top-scroll-bar" title="Scroll table horizontally">
+            <div id="topScrollInner" class="top-scroll-inner"></div>
+          </div>
+          <div class="top-slider-row">
+            <span class="slider-label">◀ Pan</span>
+            <input type="range" id="topScrollSlider" min="0" max="100" value="0" aria-label="Horizontal table scroll slider" />
+            <span class="slider-label">Pan ▶</span>
+          </div>
+        </div>
+
         <div id="foodList" class="table-wrap"></div>
       </section>
     </div>

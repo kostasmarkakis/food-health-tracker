@@ -320,8 +320,49 @@ input, select {
   accent-color: var(--accent);
 }
 
+/* Top Scroll Bar & Slider */
+.top-scroll-controls {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border-radius: 10px;
+  border: 1px solid var(--surface-alt);
+}
+
+.top-scroll-bar {
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 12px;
+  margin-bottom: 6px;
+}
+
+.top-scroll-inner {
+  height: 1px;
+}
+
+.top-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slider-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+  user-select: none;
+}
+
+#topScrollSlider {
+  flex: 1;
+  margin-top: 0;
+  padding: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 .table-wrap {
-  margin-top: 10px;
+  margin-top: 8px;
   overflow-x: auto;
   border-radius: 10px;
   background: var(--bg);
@@ -329,7 +370,8 @@ input, select {
 
 .food-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 0.86rem;
 }
 
@@ -341,12 +383,36 @@ input, select {
   white-space: nowrap;
 }
 
+/* Freeze First (Product) Column on Horizontal Scroll */
+.food-table th.sticky-col,
+.food-table td.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--bg);
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.35);
+}
+
+.food-table thead th.sticky-col {
+  z-index: 3;
+  background: #132036;
+}
+
+.food-table thead th.sticky-col.sorted-col {
+  background: var(--accent);
+  color: #052e16;
+}
+
+.food-table tbody td.sticky-col.sorted-col-cell {
+  background: #142c2a;
+}
+
 .food-table th {
   color: var(--muted);
   font-size: 0.76rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  background: rgba(15, 23, 42, 0.7);
+  background: rgba(15, 23, 42, 0.9);
 }
 
 .food-table th.sortable-th {
