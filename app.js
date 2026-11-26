@@ -1,6 +1,15 @@
 const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 const NUTRI_MAP = { A: 100, B: 75, C: 50, D: 25, E: 0 };
 const NUTRI_RANK = { A: 5, B: 4, C: 3, D: 2, E: 1 };
+const COLUMN_DEFS = [
+  { key: "nutri", label: "Nutri" },
+  { key: "yuka", label: "Yuka" },
+  { key: "off", label: "OFF" },
+  { key: "epi", label: "Epi Score" },
+  { key: "healthScore", label: "Health Score" },
+  { key: "impact", label: "Dietary Impact" }
+];
+const COLS_STORAGE_KEY = "fht_visible_columns";
 
 let tokenClient = null;
 let accessToken = null;
@@ -9,12 +18,33 @@ let headerMap = {};
 let sheetSummary = {};
 let html5QrCode = null;
 
-// --- Settings Persistence ---
+// --- Settings & Column Visibility Persistence ---
 const getSettings = () => ({
   clientId: localStorage.getItem("fht_client_id") || "",
   sheetId: localStorage.getItem("fht_sheet_id") || "1X6ZyKBCrsx6eM8zWT15s_CDtFV4zZMlzCXpUoSsB54c",
   sheetName: localStorage.getItem("fht_sheet_name") || "Overall"
 });
+
+function getVisibleColumns() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(COLS_STORAGE_KEY));
+    if (Array.isArray(saved) && saved.length > 0) {
+      return COLUMN_DEFS.filter(c => saved.includes(c.key)).map(c => c.key);
+    }
+  } catch (_) {}
+  return COLUMN_DEFS.map(c => c.key);
+}
+
+function saveVisibleColumns(cols) {
+  localStorage.setItem(COLS_STORAGE_KEY, JSON.stringify(cols));
+}
+
+function syncColumnCheckboxes() {
+  const activeCols = new Set(getVisibleColumns());
+  document.querySelectorAll('#columnToggles input[type="checkbox"]').forEach((cb) => {
+    cb.checked = activeCols.has(cb.dataset.col);
+  });
+}
 
 function loadSettingsUI() {
   const s = getSettings();
@@ -36,7 +66,6 @@ document.getElementById("saveSettingsBtn").addEventListener("click", () => {
   localStorage.setItem("fht_sheet_name", document.getElementById("sheetNameInput").value.trim() || "Overall");
   document.getElementById("settingsPanel").classList.add("hidden");
 
-  // Reuse existing access token without forcing a reconnect when already signed in
   if (accessToken) {
     fetchSheetData();
   } else {
@@ -132,7 +161,6 @@ async function fetchSheetData() {
     impact: headers.findIndex(h => h.includes("impact"))
   };
 
-  // Read summary block in columns M & N (indices 12 & 13)
   sheetSummary = {};
   data.values.slice(1, 10).forEach(row => {
     if (row[12] && row[13] !== undefined) {
@@ -240,6 +268,29 @@ function scoreBadgeClass(score) {
   return "badge-low";
 }
 
+function renderColumnCell(food, colKey) {
+  if (colKey === "nutri") {
+    return `<td><strong>${escapeHtml(food.nutri)}</strong></td>`;
+  }
+  if (colKey === "yuka") {
+    return `<td>${food.yuka}</td>`;
+  }
+  if (colKey === "off") {
+    return `<td>${food.off}</td>`;
+  }
+  if (colKey === "epi") {
+    return `<td>${food.epi}</td>`;
+  }
+  if (colKey === "healthScore") {
+    const val = Number(food.healthScore);
+    return `<td><span class="badge ${scoreBadgeClass(val)}">${val.toFixed(1)}</span></td>`;
+  }
+  if (colKey === "impact") {
+    return `<td>${Number(food.impact).toFixed(1)}</td>`;
+  }
+  return "";
+}
+
 function renderApp() {
   document.getElementById("foodCount").textContent = foods.length;
   document.getElementById("totalItems").textContent = foods.length;
@@ -258,7 +309,6 @@ function renderApp() {
     document.getElementById("weightedScore").textContent = weighted.toFixed(1);
   }
 
-  // Top Weekly Drivers by Dietary Impact Score / Weekly Grams
   const top = [...foods]
     .sort((a, b) => (b.impact || b.weeklyGrams) - (a.impact || a.weeklyGrams))
     .slice(0, 8);
@@ -281,6 +331,7 @@ function renderCatalog() {
   const nutriFilter = document.getElementById("filterNutri").value;
   const sortField = document.getElementById("sortField").value;
   const sortDir = document.getElementById("sortDirBtn").dataset.dir || "desc";
+  const visibleCols = getVisibleColumns();
 
   const filtered = foods
     .filter((f) => {
@@ -297,16 +348,54 @@ function renderCatalog() {
 
   document.getElementById("filteredCount").textContent = `Showing ${filtered.length} of ${foods.length} foods`;
 
-  document.getElementById("foodList").innerHTML = filtered.map((f) => `
-    <div class="food-item">
-      <div>
-        <strong>${escapeHtml(f.name)}</strong>
-        <div class="food-meta">Nutri: ${f.nutri} | Yuka: ${f.yuka} | OFF: ${f.off} | Epi: ${f.epi} | Impact: ${Number(f.impact).toFixed(1)} | ${f.weeklyGrams}g/wk</div>
-      </div>
-      <span class="badge ${scoreBadgeClass(f.healthScore)}">${f.healthScore.toFixed(1)}</span>
-    </div>
-  `).join("") || `<p class="hint">No matching foods found.</p>`;
+  if (filtered.length === 0) {
+    document.getElementById("foodList").innerHTML = `<p class="hint" style="padding:12px;">No matching foods found.</p>`;
+    return;
+  }
+
+  const headerCells = visibleCols.map((key) => {
+    const def = COLUMN_DEFS.find(c => c.key === key);
+    return `<th>${escapeHtml(def ? def.label : key)}</th>`;
+  }).join("");
+
+  const bodyRows = filtered.map((f) => {
+    const metricCells = visibleCols.map((key) => renderColumnCell(f, key)).join("");
+    return `
+      <tr>
+        <td><strong>${escapeHtml(f.name)}</strong></td>
+        ${metricCells}
+      </tr>
+    `;
+  }).join("");
+
+  document.getElementById("foodList").innerHTML = `
+    <table class="food-table">
+      <thead>
+        <tr>
+          <th>Product</th>
+          ${headerCells}
+        </tr>
+      </thead>
+      <tbody>
+        ${bodyRows}
+      </tbody>
+    </table>
+  `;
 }
+
+document.querySelectorAll('#columnToggles input[type="checkbox"]').forEach((cb) => {
+  cb.addEventListener("change", (e) => {
+    const checked = Array.from(document.querySelectorAll('#columnToggles input[type="checkbox"]:checked'))
+      .map(el => el.dataset.col);
+    if (checked.length === 0) {
+      // Keep at least one metric column visible
+      e.currentTarget.checked = true;
+      return;
+    }
+    saveVisibleColumns(checked);
+    renderCatalog();
+  });
+});
 
 document.getElementById("sortDirBtn").addEventListener("click", (e) => {
   const btn = e.currentTarget;
@@ -329,6 +418,8 @@ document.getElementById("resetFiltersBtn").addEventListener("click", () => {
   ["valYuka", "valOff", "valEpi", "valHealth", "valImpact"].forEach((id) => {
     document.getElementById(id).value = "";
   });
+  saveVisibleColumns(COLUMN_DEFS.map(c => c.key));
+  syncColumnCheckboxes();
   renderCatalog();
 });
 
@@ -456,6 +547,7 @@ function escapeHtml(str) {
 
 window.addEventListener("load", () => {
   loadSettingsUI();
+  syncColumnCheckboxes();
   updatePreview();
   setTimeout(initGoogleAuth, 600);
 });
