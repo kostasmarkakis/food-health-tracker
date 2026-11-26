@@ -1,7 +1,8 @@
 const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 const NUTRI_MAP = { A: 100, B: 75, C: 50, D: 25, E: 0 };
 const NUTRI_RANK = { A: 5, B: 4, C: 3, D: 2, E: 1 };
-const COLUMN_DEFS = [
+
+const CORE_COLUMNS = [
   { key: "nutri", label: "Nutri" },
   { key: "yuka", label: "Yuka" },
   { key: "off", label: "OFF" },
@@ -9,11 +10,41 @@ const COLUMN_DEFS = [
   { key: "healthScore", label: "Health Score" },
   { key: "impact", label: "Dietary Impact" }
 ];
+
+// Matches columns B..J of the Lookup tab (per 100g)
+const NUTRIENT_COLUMNS = [
+  { key: "fiber", label: "Fiber (/100g)" },
+  { key: "protein", label: "Protein (/100g)" },
+  { key: "potassium", label: "Potassium (/100g)" },
+  { key: "magnesium", label: "Magnesium (/100g)" },
+  { key: "calcium", label: "Calcium (/100g)" },
+  { key: "iron", label: "Iron (/100g)" },
+  { key: "vitC", label: "Vitamin C (/100g)" },
+  { key: "vitA", label: "Vitamin A (/100g)" },
+  { key: "vitB12", label: "Vitamin B12 (/100g)" }
+];
+
+// Matches columns K..P of the Lookup tab (per 100g)
+const ENERGY_COLUMNS = [
+  { key: "calories", label: "Calories (/100g)" },
+  { key: "totalFat", label: "Total Fat (/100g)" },
+  { key: "satFat", label: "Sat. Fat (/100g)" },
+  { key: "carbs", label: "Carbs (/100g)" },
+  { key: "sugars", label: "Sugars (/100g)" },
+  { key: "sodium", label: "Sodium (/100g)" }
+];
+
+const ALL_COLUMN_DEFS = [...CORE_COLUMNS, ...NUTRIENT_COLUMNS, ...ENERGY_COLUMNS];
+
 const COLS_STORAGE_KEY = "fht_visible_columns";
+const NUTRIENTS_GROUP_KEY = "fht_show_nutrients";
+const ENERGY_GROUP_KEY = "fht_show_energy";
 
 let tokenClient = null;
 let accessToken = null;
 let foods = [];
+let lookupByName = {};
+let lookupLoaded = false;
 let headerMap = {};
 let sheetSummary = {};
 let html5QrCode = null;
@@ -25,25 +56,46 @@ const getSettings = () => ({
   sheetName: localStorage.getItem("fht_sheet_name") || "Overall"
 });
 
-function getVisibleColumns() {
+function getCoreVisibleColumns() {
   try {
     const saved = JSON.parse(localStorage.getItem(COLS_STORAGE_KEY));
-    if (Array.isArray(saved) && saved.length > 0) {
-      return COLUMN_DEFS.filter(c => saved.includes(c.key)).map(c => c.key);
+    if (Array.isArray(saved)) {
+      return CORE_COLUMNS.filter(c => saved.includes(c.key)).map(c => c.key);
     }
   } catch (_) {}
-  return COLUMN_DEFS.map(c => c.key);
+  return CORE_COLUMNS.map(c => c.key);
 }
 
-function saveVisibleColumns(cols) {
+function saveCoreVisibleColumns(cols) {
   localStorage.setItem(COLS_STORAGE_KEY, JSON.stringify(cols));
 }
 
-function syncColumnCheckboxes() {
-  const activeCols = new Set(getVisibleColumns());
+function isNutrientsGroupEnabled() {
+  return localStorage.getItem(NUTRIENTS_GROUP_KEY) === "true";
+}
+
+function isEnergyGroupEnabled() {
+  return localStorage.getItem(ENERGY_GROUP_KEY) === "true";
+}
+
+function getActiveColumns() {
+  const cols = getCoreVisibleColumns().map(key => ALL_COLUMN_DEFS.find(c => c.key === key)).filter(Boolean);
+  if (isNutrientsGroupEnabled()) {
+    cols.push(...NUTRIENT_COLUMNS);
+  }
+  if (isEnergyGroupEnabled()) {
+    cols.push(...ENERGY_COLUMNS);
+  }
+  return cols;
+}
+
+function syncColumnControls() {
+  const activeCore = new Set(getCoreVisibleColumns());
   document.querySelectorAll('#columnToggles input[type="checkbox"]').forEach((cb) => {
-    cb.checked = activeCols.has(cb.dataset.col);
+    cb.checked = activeCore.has(cb.dataset.col);
   });
+  document.getElementById("toggleNutrientsGroup").checked = isNutrientsGroupEnabled();
+  document.getElementById("toggleEnergyGroup").checked = isEnergyGroupEnabled();
 }
 
 function loadSettingsUI() {
@@ -106,7 +158,10 @@ function requestToken() {
 }
 
 document.getElementById("authBtn").addEventListener("click", requestToken);
-document.getElementById("refreshBtn").addEventListener("click", fetchSheetData);
+document.getElementById("refreshBtn").addEventListener("click", () => {
+  lookupLoaded = false;
+  fetchSheetData();
+});
 
 function setStatus(msg) {
   document.getElementById("syncStatus").textContent = msg;
@@ -119,6 +174,43 @@ function computeHealthScore(nutriGrade, yuka, off, epi) {
 }
 
 // --- Google Sheets Read / Write ---
+async function fetchLookupDataIfNeeded() {
+  if (!accessToken || lookupLoaded) return;
+  const { sheetId } = getSettings();
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent("Lookup")}!A1:P200`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  const data = await res.json();
+  if (data.error || !data.values || data.values.length < 2) return;
+
+  const map = {};
+  data.values.slice(1).forEach((row) => {
+    const rawName = (row[0] || "").trim().toLowerCase();
+    if (!rawName) return;
+    map[rawName] = {
+      fiber: parseFloat(row[1]) || 0,
+      protein: parseFloat(row[2]) || 0,
+      potassium: parseFloat(row[3]) || 0,
+      magnesium: parseFloat(row[4]) || 0,
+      calcium: parseFloat(row[5]) || 0,
+      iron: parseFloat(row[6]) || 0,
+      vitC: parseFloat(row[7]) || 0,
+      vitA: parseFloat(row[8]) || 0,
+      vitB12: parseFloat(row[9]) || 0,
+      calories: parseFloat(row[10]) || 0,
+      totalFat: parseFloat(row[11]) || 0,
+      satFat: parseFloat(row[12]) || 0,
+      carbs: parseFloat(row[13]) || 0,
+      sugars: parseFloat(row[14]) || 0,
+      sodium: parseFloat(row[15]) || 0
+    };
+  });
+
+  lookupByName = map;
+  lookupLoaded = true;
+}
+
 async function fetchSheetData() {
   if (!accessToken) return;
   const { sheetId, sheetName } = getSettings();
@@ -189,6 +281,10 @@ async function fetchSheetData() {
       return { rowNumber: idx + 2, name, qtyLabel, nutri, yuka, off, epi, healthScore, grams, freq, weeklyGrams, impact };
     });
 
+  if (isNutrientsGroupEnabled() || isEnergyGroupEnabled()) {
+    await fetchLookupDataIfNeeded();
+  }
+
   setStatus(`Synced (${foods.length} items) • ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
   renderApp();
 }
@@ -241,9 +337,7 @@ function matchesNumericFilter(value, opId, valId) {
   const threshold = parseFloat(rawVal);
   if (isNaN(threshold)) return true;
 
-  if (op === "gt") return value > threshold;
   if (op === "gte") return value >= threshold;
-  if (op === "lt") return value < threshold;
   if (op === "lte") return value <= threshold;
   return true;
 }
@@ -268,27 +362,37 @@ function scoreBadgeClass(score) {
   return "badge-low";
 }
 
-function renderColumnCell(food, colKey) {
+function formatMetricVal(val, decimals = 2) {
+  const n = Number(val);
+  if (!isFinite(n) || n === 0) return "0";
+  return Number.isInteger(n) ? String(n) : n.toFixed(decimals).replace(/\.?0+$/, "");
+}
+
+function renderColumnCell(food, colKey, isSortedCol) {
+  const cls = isSortedCol ? ' class="sorted-col-cell"' : "";
   if (colKey === "nutri") {
-    return `<td><strong>${escapeHtml(food.nutri)}</strong></td>`;
+    return `<td${cls}><strong>${escapeHtml(food.nutri)}</strong></td>`;
   }
   if (colKey === "yuka") {
-    return `<td>${food.yuka}</td>`;
+    return `<td${cls}>${food.yuka}</td>`;
   }
   if (colKey === "off") {
-    return `<td>${food.off}</td>`;
+    return `<td${cls}>${food.off}</td>`;
   }
   if (colKey === "epi") {
-    return `<td>${food.epi}</td>`;
+    return `<td${cls}>${food.epi}</td>`;
   }
   if (colKey === "healthScore") {
     const val = Number(food.healthScore);
-    return `<td><span class="badge ${scoreBadgeClass(val)}">${val.toFixed(1)}</span></td>`;
+    return `<td${cls}><span class="badge ${scoreBadgeClass(val)}">${val.toFixed(1)}</span></td>`;
   }
   if (colKey === "impact") {
-    return `<td>${Number(food.impact).toFixed(1)}</td>`;
+    return `<td${cls}>${Number(food.impact).toFixed(1)}</td>`;
   }
-  return "";
+
+  const lookup = lookupByName[food.name.trim().toLowerCase()] || {};
+  const val = lookup[colKey] ?? 0;
+  return `<td${cls}>${formatMetricVal(val)}</td>`;
 }
 
 function renderApp() {
@@ -331,7 +435,8 @@ function renderCatalog() {
   const nutriFilter = document.getElementById("filterNutri").value;
   const sortField = document.getElementById("sortField").value;
   const sortDir = document.getElementById("sortDirBtn").dataset.dir || "desc";
-  const visibleCols = getVisibleColumns();
+  const activeCols = getActiveColumns();
+  const arrow = sortDir === "asc" ? "↑" : "↓";
 
   const filtered = foods
     .filter((f) => {
@@ -346,20 +451,25 @@ function renderCatalog() {
     })
     .sort((a, b) => compareFoods(a, b, sortField, sortDir));
 
-  document.getElementById("filteredCount").textContent = `Showing ${filtered.length} of ${foods.length} foods`;
+  document.getElementById("filteredCount").textContent =
+    `Showing ${filtered.length} of ${foods.length} foods • Sorted by ${sortField} (${arrow})`;
 
   if (filtered.length === 0) {
     document.getElementById("foodList").innerHTML = `<p class="hint" style="padding:12px;">No matching foods found.</p>`;
     return;
   }
 
-  const headerCells = visibleCols.map((key) => {
-    const def = COLUMN_DEFS.find(c => c.key === key);
-    return `<th>${escapeHtml(def ? def.label : key)}</th>`;
+  const headerCells = activeCols.map((col) => {
+    const isSorted = col.key === sortField;
+    const thClass = isSorted ? ' class="sorted-col"' : "";
+    const indicator = isSorted ? `<span class="sort-indicator">${arrow}</span>` : "";
+    return `<th${thClass}>${escapeHtml(col.label)}${indicator}</th>`;
   }).join("");
 
   const bodyRows = filtered.map((f) => {
-    const metricCells = visibleCols.map((key) => renderColumnCell(f, key)).join("");
+    const metricCells = activeCols
+      .map((col) => renderColumnCell(f, col.key, col.key === sortField))
+      .join("");
     return `
       <tr>
         <td><strong>${escapeHtml(f.name)}</strong></td>
@@ -384,17 +494,30 @@ function renderCatalog() {
 }
 
 document.querySelectorAll('#columnToggles input[type="checkbox"]').forEach((cb) => {
-  cb.addEventListener("change", (e) => {
+  cb.addEventListener("change", () => {
     const checked = Array.from(document.querySelectorAll('#columnToggles input[type="checkbox"]:checked'))
       .map(el => el.dataset.col);
-    if (checked.length === 0) {
-      // Keep at least one metric column visible
-      e.currentTarget.checked = true;
-      return;
-    }
-    saveVisibleColumns(checked);
+    saveCoreVisibleColumns(checked);
     renderCatalog();
   });
+});
+
+async function handleGroupToggle(storageKey, isChecked) {
+  localStorage.setItem(storageKey, String(isChecked));
+  if (isChecked && accessToken && !lookupLoaded) {
+    setStatus("Loading Lookup columns...");
+    await fetchLookupDataIfNeeded();
+    setStatus(`Synced (${foods.length} items) • ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
+  }
+  renderCatalog();
+}
+
+document.getElementById("toggleNutrientsGroup").addEventListener("change", (e) => {
+  handleGroupToggle(NUTRIENTS_GROUP_KEY, e.currentTarget.checked);
+});
+
+document.getElementById("toggleEnergyGroup").addEventListener("change", (e) => {
+  handleGroupToggle(ENERGY_GROUP_KEY, e.currentTarget.checked);
 });
 
 document.getElementById("sortDirBtn").addEventListener("click", (e) => {
@@ -418,8 +541,10 @@ document.getElementById("resetFiltersBtn").addEventListener("click", () => {
   ["valYuka", "valOff", "valEpi", "valHealth", "valImpact"].forEach((id) => {
     document.getElementById(id).value = "";
   });
-  saveVisibleColumns(COLUMN_DEFS.map(c => c.key));
-  syncColumnCheckboxes();
+  saveCoreVisibleColumns(CORE_COLUMNS.map(c => c.key));
+  localStorage.setItem(NUTRIENTS_GROUP_KEY, "false");
+  localStorage.setItem(ENERGY_GROUP_KEY, "false");
+  syncColumnControls();
   renderCatalog();
 });
 
@@ -547,7 +672,7 @@ function escapeHtml(str) {
 
 window.addEventListener("load", () => {
   loadSettingsUI();
-  syncColumnCheckboxes();
+  syncColumnControls();
   updatePreview();
   setTimeout(initGoogleAuth, 600);
 });
