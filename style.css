@@ -17,7 +17,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
-  max-width: 780px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 16px;
   padding-bottom: 64px;
@@ -229,6 +229,15 @@ input, select {
   gap: 8px;
 }
 
+.column-group-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--surface);
+}
+
 .col-chip {
   display: inline-flex;
   align-items: center;
@@ -241,6 +250,10 @@ input, select {
   color: var(--text);
   font-size: 0.8rem;
   cursor: pointer;
+}
+
+.col-chip-group {
+  border-color: rgba(16, 185, 129, 0.45);
 }
 
 .col-chip input[type="checkbox"] {
@@ -287,6 +300,21 @@ input, select {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   background: rgba(15, 23, 42, 0.7);
+}
+
+.food-table th.sorted-col {
+  color: var(--accent);
+  background: rgba(16, 185, 129, 0.14);
+  border-bottom: 2px solid var(--accent);
+}
+
+.food-table td.sorted-col-cell {
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.sort-indicator {
+  margin-left: 4px;
+  font-weight: 800;
 }
 
 .food-table tr:last-child td {
