@@ -135,4 +135,192 @@
                   <select id="opYuka">
                     <option value="any" selected>Any</option>
                     <option value="gte">&gt;=</option>
-                    <option value="lte
+                    <option value="lte">&lt;=</option>
+                  </select>
+                  <input type="number" id="valYuka" step="any" placeholder="0–100" />
+                </div>
+              </td>
+            </tr>
+            <tr class="filter-row" data-filter-col="off">
+              <th>
+                <div class="filter-label-row">
+                  <span>Open Food Facts</span>
+                  <span class="filter-badge hidden" id="badgeOff">Filtered</span>
+                </div>
+              </th>
+              <td>
+                <div class="op-val-group">
+                  <select id="opOff">
+                    <option value="any" selected>Any</option>
+                    <option value="gte">&gt;=</option>
+                    <option value="lte">&lt;=</option>
+                  </select>
+                  <input type="number" id="valOff" step="any" placeholder="0–100" />
+                </div>
+              </td>
+            </tr>
+            <tr class="filter-row" data-filter-col="epi">
+              <th>
+                <div class="filter-label-row">
+                  <span>Epi Score</span>
+                  <span class="filter-badge hidden" id="badgeEpi">Filtered</span>
+                </div>
+              </th>
+              <td>
+                <div class="op-val-group">
+                  <select id="opEpi">
+                    <option value="any" selected>Any</option>
+                    <option value="gte">&gt;=</option>
+                    <option value="lte">&lt;=</option>
+                  </select>
+                  <input type="number" id="valEpi" step="any" placeholder="0–100" />
+                </div>
+              </td>
+            </tr>
+            <tr class="filter-row" data-filter-col="healthScore">
+              <th>
+                <div class="filter-label-row">
+                  <span>Health Score</span>
+                  <span class="filter-badge hidden" id="badgeHealth">Filtered</span>
+                </div>
+              </th>
+              <td>
+                <div class="op-val-group">
+                  <select id="opHealth">
+                    <option value="any" selected>Any</option>
+                    <option value="gte">&gt;=</option>
+                    <option value="lte">&lt;=</option>
+                  </select>
+                  <input type="number" id="valHealth" step="any" placeholder="0–100" />
+                </div>
+              </td>
+            </tr>
+            <tr class="filter-row" data-filter-col="impact">
+              <th>
+                <div class="filter-label-row">
+                  <span>Dietary Impact</span>
+                  <span class="filter-badge hidden" id="badgeImpact">Filtered</span>
+                </div>
+              </th>
+              <td>
+                <div class="op-val-group">
+                  <select id="opImpact">
+                    <option value="any" selected>Any</option>
+                    <option value="gte">&gt;=</option>
+                    <option value="lte">&lt;=</option>
+                  </select>
+                  <input type="number" id="valImpact" step="any" placeholder="Score" />
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th>Columns</th>
+              <td>
+                <div class="column-toggles" id="columnToggles">
+                  <label class="col-chip"><input type="checkbox" data-col="nutri" checked /> Nutri</label>
+                  <label class="col-chip"><input type="checkbox" data-col="yuka" checked /> Yuka</label>
+                  <label class="col-chip"><input type="checkbox" data-col="off" checked /> OFF</label>
+                  <label class="col-chip"><input type="checkbox" data-col="epi" checked /> Epi</label>
+                  <label class="col-chip"><input type="checkbox" data-col="healthScore" checked /> Health</label>
+                  <label class="col-chip"><input type="checkbox" data-col="impact" checked /> Impact</label>
+                </div>
+                <div class="column-group-row">
+                  <label class="col-chip col-chip-group"><input type="checkbox" id="toggleNutrientsGroup" /> Nutrients</label>
+                  <label class="col-chip col-chip-group"><input type="checkbox" id="toggleEnergyGroup" /> Energy</label>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </aside>
+
+      <!-- Right Hand Side: Separate Food List Table -->
+      <section class="card food-list-panel">
+        <div class="food-list-header">
+          <h2>Food List</h2>
+          <span id="filteredCount" class="hint">Showing 0 foods</span>
+        </div>
+        <p class="hint">Click any column header to sort. Product column stays frozen while scrolling horizontally.</p>
+
+        <!-- Single Synced Scrollbar at Top -->
+        <div id="topScrollBar" class="top-scroll-bar hidden" title="Scroll table horizontally">
+          <div id="topScrollInner" class="top-scroll-inner"></div>
+        </div>
+
+        <div id="foodList" class="table-wrap"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Add Food View -->
+  <main id="tab-add" class="tab-content">
+    <div class="card">
+      <h2>Add Product to Google Sheet</h2>
+
+      <!-- Barcode Scanner Box -->
+      <div class="scanner-box">
+        <div class="row-actions">
+          <button type="button" id="scanBarcodeBtn" class="btn btn-secondary">📷 Scan Barcode (Open Food Facts)</button>
+          <button type="button" id="stopScanBtn" class="btn btn-ghost hidden">Stop Camera</button>
+        </div>
+        <div id="reader" class="hidden"></div>
+        <p id="offStatus" class="hint"></p>
+      </div>
+
+      <form id="addFoodForm">
+        <label>
+          Product Name *
+          <input type="text" id="fName" required placeholder="e.g., Greek Yogurt 2%" />
+        </label>
+
+        <div class="grid-2">
+          <label>
+            Nutri-Score (A–E) *
+            <select id="fNutri">
+              <option value="A">A (100)</option>
+              <option value="B" selected>B (75)</option>
+              <option value="C">C (50)</option>
+              <option value="D">D (25)</option>
+              <option value="E">E (0)</option>
+            </select>
+          </label>
+          <label>
+            Yuka Score (0–100) *
+            <input type="number" id="fYuka" min="0" max="100" step="1" required placeholder="e.g., 78" />
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label>
+            OFF Score (0–100) *
+            <input type="number" id="fOff" min="0" max="100" step="1" required placeholder="e.g., 75" />
+          </label>
+          <label>
+            Epi Score (0–100) *
+            <input type="number" id="fEpi" min="0" max="100" step="1" value="50" required />
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label>
+            Portion Size (grams)
+            <input type="number" id="fGrams" min="0" step="1" value="100" />
+          </label>
+          <label>
+            Weekly Frequency (times/wk)
+            <input type="number" id="fFreq" min="0" step="0.5" value="1" />
+          </label>
+        </div>
+
+        <div class="preview-box">
+          Calculated Health Score: <strong id="previewScore">—</strong>
+        </div>
+
+        <button type="submit" class="btn btn-primary full-width">Save to Google Sheet</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
