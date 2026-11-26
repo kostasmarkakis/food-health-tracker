@@ -302,19 +302,28 @@ input, select {
   background: rgba(15, 23, 42, 0.7);
 }
 
+.food-table th.sortable-th {
+  cursor: pointer;
+}
+
+.food-table th.sortable-th:hover {
+  color: var(--text);
+}
+
 .food-table th.sorted-col {
-  color: var(--accent);
-  background: rgba(16, 185, 129, 0.14);
+  color: #052e16;
+  background: var(--accent);
   border-bottom: 2px solid var(--accent);
 }
 
 .food-table td.sorted-col-cell {
-  background: rgba(16, 185, 129, 0.06);
+  background: rgba(16, 185, 129, 0.08);
+  font-weight: 600;
 }
 
 .sort-indicator {
-  margin-left: 4px;
-  font-weight: 800;
+  margin-left: 5px;
+  font-weight: 900;
 }
 
 .food-table tr:last-child td {
