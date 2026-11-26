@@ -5,13 +5,14 @@ let tokenClient = null;
 let accessToken = null;
 let foods = [];
 let headerMap = {};
+let sheetSummary = {};
 let html5QrCode = null;
 
 // --- Settings Persistence ---
 const getSettings = () => ({
   clientId: localStorage.getItem("fht_client_id") || "",
   sheetId: localStorage.getItem("fht_sheet_id") || "1X6ZyKBCrsx6eM8zWT15s_CDtFV4zZMlzCXpUoSsB54c",
-  sheetName: localStorage.getItem("fht_sheet_name") || "Sheet1"
+  sheetName: localStorage.getItem("fht_sheet_name") || "Overall"
 });
 
 function loadSettingsUI() {
@@ -31,7 +32,7 @@ document.getElementById("settingsToggleBtn").addEventListener("click", () => {
 document.getElementById("saveSettingsBtn").addEventListener("click", () => {
   localStorage.setItem("fht_client_id", document.getElementById("clientIdInput").value.trim());
   localStorage.setItem("fht_sheet_id", document.getElementById("sheetIdInput").value.trim());
-  localStorage.setItem("fht_sheet_name", document.getElementById("sheetNameInput").value.trim() || "Sheet1");
+  localStorage.setItem("fht_sheet_name", document.getElementById("sheetNameInput").value.trim() || "Overall");
   document.getElementById("settingsPanel").classList.add("hidden");
   initGoogleAuth();
   requestToken();
@@ -75,11 +76,10 @@ function setStatus(msg) {
   document.getElementById("syncStatus").textContent = msg;
 }
 
-// --- Scoring Logic ---
+// --- Scoring Logic (Matches Overall Sheet Formula) ---
 function computeHealthScore(nutriGrade, yuka, off, epi) {
   const nutriNum = NUTRI_MAP[(nutriGrade || "C").toUpperCase()] ?? 50;
-  // Balanced weights across Nutri, Yuka, OFF, and Epi Score (sum = 1.00)
-  return (0.15 * nutriNum) + (0.35 * Number(yuka || 0)) + (0.25 * Number(off || 0)) + (0.25 * Number(epi || 50));
+  return (nutriNum + Number(yuka || 0) + Number(off || 0) + Number(epi || 50)) / 4;
 }
 
 // --- Google Sheets Read / Write ---
@@ -88,11 +88,16 @@ async function fetchSheetData() {
   const { sheetId, sheetName } = getSettings();
   setStatus("Loading sheet...");
 
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName)}!A1:Z200`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName)}!A1:P200`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
   const data = await res.json();
+
+  if (data.error) {
+    setStatus("Sheet error: " + data.error.message);
+    return;
+  }
 
   if (!data.values || data.values.length < 2) {
     setStatus("No rows found in " + sheetName);
@@ -101,20 +106,32 @@ async function fetchSheetData() {
 
   const headers = data.values[0].map(h => h.trim().toLowerCase());
   headerMap = {
-    name: headers.findIndex(h => h.includes("product") || h.includes("name") || h === "food"),
-    nutri: headers.findIndex(h => h.includes("nutri")),
-    yuka: headers.findIndex(h => h.includes("yuka")),
-    off: headers.findIndex(h => h.includes("off")),
+    name: headers.findIndex(h => h === "product name" || h.includes("product") || h === "food"),
+    qtyLabel: headers.findIndex(h => h === "quantity"),
+    grams: headers.findIndex(h => h.includes("grams")),
+    freq: headers.findIndex(h => h.includes("freq")),
+    weeklyQty: headers.findIndex(h => h === "weekly quantity"),
+    nutri: headers.findIndex(h => h === "nutri" || h.includes("nutri")),
+    yuka: headers.findIndex(h => h === "yuka" || h.includes("yuka")),
+    off: headers.findIndex(h => h === "off" || h.includes("off")),
     epi: headers.findIndex(h => h.includes("epi")),
-    score: headers.findIndex(h => h.includes("health") || h.includes("combined")),
-    grams: headers.findIndex(h => h.includes("gram") || h.includes("quantity") || h === "q"),
-    freq: headers.findIndex(h => h.includes("freq") || h === "f")
+    score: headers.findIndex(h => h === "health score"),
+    impact: headers.findIndex(h => h.includes("impact"))
   };
+
+  // Read summary block in columns M & N (indices 12 & 13)
+  sheetSummary = {};
+  data.values.slice(1, 10).forEach(row => {
+    if (row[12] && row[13] !== undefined) {
+      sheetSummary[row[12].trim().toLowerCase()] = parseFloat(row[13]);
+    }
+  });
 
   foods = data.values.slice(1)
     .filter(row => row[headerMap.name >= 0 ? headerMap.name : 0])
     .map((row, idx) => {
       const name = row[headerMap.name >= 0 ? headerMap.name : 0] || "";
+      const qtyLabel = headerMap.qtyLabel >= 0 ? (row[headerMap.qtyLabel] || "") : "";
       const nutri = (row[headerMap.nutri] || "C").toUpperCase();
       const yuka = parseFloat(row[headerMap.yuka]) || 0;
       const off = parseFloat(row[headerMap.off]) || 0;
@@ -123,7 +140,12 @@ async function fetchSheetData() {
       const healthScore = !isNaN(sheetScore) ? sheetScore : computeHealthScore(nutri, yuka, off, epi);
       const grams = headerMap.grams >= 0 ? (parseFloat(row[headerMap.grams]) || 0) : 0;
       const freq = headerMap.freq >= 0 ? (parseFloat(row[headerMap.freq]) || 0) : 0;
-      return { rowNumber: idx + 2, name, nutri, yuka, off, epi, healthScore, grams, freq, weeklyGrams: grams * freq };
+      const weeklyGrams = headerMap.weeklyQty >= 0 && row[headerMap.weeklyQty] !== ""
+        ? (parseFloat(row[headerMap.weeklyQty]) || 0)
+        : grams * freq;
+      const impact = headerMap.impact >= 0 ? (parseFloat(row[headerMap.impact]) || 0) : 0;
+
+      return { rowNumber: idx + 2, name, qtyLabel, nutri, yuka, off, epi, healthScore, grams, freq, weeklyGrams, impact };
     });
 
   setStatus(`Synced (${foods.length} items) • ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
@@ -136,22 +158,24 @@ async function appendFoodRow(item) {
     return;
   }
   const { sheetId, sheetName } = getSettings();
-  const row = [];
-  const maxCol = Math.max(4, ...Object.values(headerMap));
-  for (let i = 0; i <= maxCol; i++) row[i] = "";
+  const nextRow = foods.length + 2;
+  const row = new Array(11).fill("");
 
-  row[headerMap.name >= 0 ? headerMap.name : 0] = item.name;
-  if (headerMap.nutri >= 0) row[headerMap.nutri] = item.nutri;
-  if (headerMap.yuka >= 0) row[headerMap.yuka] = item.yuka;
-  if (headerMap.off >= 0) row[headerMap.off] = item.off;
-  if (headerMap.epi >= 0) row[headerMap.epi] = item.epi;
-  if (headerMap.score >= 0) row[headerMap.score] = Number(item.healthScore.toFixed(1));
-  if (headerMap.grams >= 0) row[headerMap.grams] = item.grams;
-  if (headerMap.freq >= 0) row[headerMap.freq] = item.freq;
+  row[0] = item.name;
+  row[1] = `${item.grams}g`;
+  row[2] = item.grams;
+  row[3] = item.freq;
+  row[4] = `=C${nextRow}*D${nextRow}`;
+  row[5] = item.nutri;
+  row[6] = item.yuka;
+  row[7] = item.off;
+  row[8] = item.epi;
+  row[9] = `=(IFS(TRIM(UPPER(F${nextRow}))="A",100,TRIM(UPPER(F${nextRow}))="B",75,TRIM(UPPER(F${nextRow}))="C",50,TRIM(UPPER(F${nextRow}))="D",25,TRIM(UPPER(F${nextRow}))="E",0)+G${nextRow}+H${nextRow}+I${nextRow})/4`;
+  row[10] = `=(J${nextRow}-50)*(E${nextRow}/100)`;
 
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName)}!A1:append?valueInputOption=USER_ENTERED`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName)}!A${nextRow}:K${nextRow}?valueInputOption=USER_ENTERED`;
   const res = await fetch(url, {
-    method: "POST",
+    method: "PUT",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json"
@@ -180,21 +204,22 @@ function renderApp() {
   document.getElementById("totalItems").textContent = foods.length;
 
   if (foods.length > 0) {
+    const overall = sheetSummary["overall health score"];
+    const foodQuality = sheetSummary["food quality score"];
     const avg = foods.reduce((acc, f) => acc + f.healthScore, 0) / foods.length;
-    document.getElementById("avgScore").textContent = avg.toFixed(1);
+
+    document.getElementById("avgScore").textContent = !isNaN(overall) ? overall.toFixed(1) : avg.toFixed(1);
 
     const totalWeeklyG = foods.reduce((acc, f) => acc + f.weeklyGrams, 0);
-    if (totalWeeklyG > 0) {
-      const weighted = foods.reduce((acc, f) => acc + f.healthScore * f.weeklyGrams, 0) / totalWeeklyG;
-      document.getElementById("weightedScore").textContent = weighted.toFixed(1);
-    } else {
-      document.getElementById("weightedScore").textContent = avg.toFixed(1);
-    }
+    const weighted = !isNaN(foodQuality)
+      ? foodQuality
+      : (totalWeeklyG > 0 ? foods.reduce((acc, f) => acc + f.healthScore * f.weeklyGrams, 0) / totalWeeklyG : avg);
+    document.getElementById("weightedScore").textContent = weighted.toFixed(1);
   }
 
-  // Top Weekly Drivers
+  // Top Weekly Drivers by Dietary Impact Score / Weekly Grams
   const top = [...foods]
-    .sort((a, b) => (b.weeklyGrams || b.healthScore) - (a.weeklyGrams || a.healthScore))
+    .sort((a, b) => (b.impact || b.weeklyGrams) - (a.impact || a.weeklyGrams))
     .slice(0, 8);
 
   document.getElementById("topFoodsList").innerHTML = top.map(f => `
@@ -217,7 +242,7 @@ function renderCatalog(filter = "") {
     <div class="food-item">
       <div>
         <strong>${escapeHtml(f.name)}</strong>
-        <div class="food-meta">Nutri: ${f.nutri} | Yuka: ${f.yuka} | OFF: ${f.off} | Epi: ${f.epi}</div>
+        <div class="food-meta">Nutri: ${f.nutri} | Yuka: ${f.yuka} | OFF: ${f.off} | Epi: ${f.epi} | ${f.weeklyGrams}g/wk</div>
       </div>
       <span class="badge ${scoreBadgeClass(f.healthScore)}">${f.healthScore.toFixed(1)}</span>
     </div>
@@ -309,7 +334,6 @@ async function lookupOpenFoodFacts(barcode) {
     if (p.nutriscore_grade && NUTRI_MAP[p.nutriscore_grade.toUpperCase()] !== undefined) {
       document.getElementById("fNutri").value = p.nutriscore_grade.toUpperCase();
     }
-    // Map NOVA group (1-4) to a 0-100 OFF baseline if exact score isn't present
     const novaMap = { 1: 95, 2: 75, 3: 50, 4: 20 };
     if (p.nova_group && novaMap[p.nova_group]) {
       document.getElementById("fOff").value = novaMap[p.nova_group];
