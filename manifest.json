@@ -1,0 +1,15 @@
+{
+  "name": "Food Health Tracker",
+  "short_name": "FoodTracker",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f957.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    }
+  ]
+}
