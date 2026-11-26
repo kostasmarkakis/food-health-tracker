@@ -34,8 +34,13 @@ document.getElementById("saveSettingsBtn").addEventListener("click", () => {
   localStorage.setItem("fht_sheet_id", document.getElementById("sheetIdInput").value.trim());
   localStorage.setItem("fht_sheet_name", document.getElementById("sheetNameInput").value.trim() || "Overall");
   document.getElementById("settingsPanel").classList.add("hidden");
-  initGoogleAuth();
-  requestToken();
+
+  if (accessToken) {
+    fetchSheetData();
+  } else {
+    initGoogleAuth();
+    requestToken();
+  }
 });
 
 // --- Google OAuth ---
