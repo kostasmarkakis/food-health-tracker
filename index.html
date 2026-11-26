@@ -84,17 +84,7 @@
       <div class="catalog-top-row">
         <input type="search" id="searchInput" placeholder="Search foods (e.g., Apple, Kimas, Baguette)..." />
         <div class="sort-controls">
-          <label class="inline-field">
-            Sort by
-            <select id="sortField">
-              <option value="healthScore" selected>Health Score</option>
-              <option value="nutri">Nutri (A–E)</option>
-              <option value="yuka">Yuka</option>
-              <option value="off">OFF</option>
-              <option value="epi">Epi Score</option>
-              <option value="impact">Dietary Impact Score</option>
-            </select>
-          </label>
+          <span id="sortSummaryBadge" class="sort-summary">Sorted by: <strong>Health Score ↓</strong> <span class="hint-inline">(click any column header)</span></span>
           <button type="button" id="sortDirBtn" class="btn btn-ghost" data-dir="desc" title="Toggle sort direction">↓ Desc</button>
         </div>
       </div>
@@ -204,8 +194,8 @@
         </div>
 
         <div class="column-group-row">
-          <label class="col-chip col-chip-group"><input type="checkbox" id="toggleNutrientsGroup" /> Nutrients</label>
-          <label class="col-chip col-chip-group"><input type="checkbox" id="toggleEnergyGroup" /> Energy &amp; Macros</label>
+          <label class="col-chip col-chip-group"><input type="checkbox" id="toggleNutrientsGroup" /> Nutrients (Lookup)</label>
+          <label class="col-chip col-chip-group"><input type="checkbox" id="toggleEnergyGroup" /> Energy &amp; Macros (Lookup)</label>
         </div>
       </div>
 

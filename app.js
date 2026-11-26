@@ -48,6 +48,7 @@ let lookupLoaded = false;
 let headerMap = {};
 let sheetSummary = {};
 let html5QrCode = null;
+let currentSortField = "healthScore";
 
 function normKey(str) {
   return String(str || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -100,6 +101,17 @@ function getActiveColumns() {
     cols.push(...ENERGY_COLUMNS);
   }
   return cols;
+}
+
+function resolveSortField(activeCols) {
+  if (currentSortField === "name") return "name";
+  const isVisible = activeCols.some(c => c.key === currentSortField);
+  if (!isVisible) {
+    currentSortField = activeCols.some(c => c.key === "healthScore")
+      ? "healthScore"
+      : (activeCols[0]?.key || "name");
+  }
+  return currentSortField;
 }
 
 function syncColumnControls() {
@@ -402,9 +414,10 @@ function updateFilterIndicators(filterDetails) {
 }
 
 function getFoodMetricValue(food, field) {
+  if (field === "name") return food.name.toLowerCase();
   if (field in food) return food[field];
   const lookup = lookupByName[normKey(food.name)];
-  return lookup ? (lookup[field] ?? 0) : 0;
+  return lookup ? (lookup[field] ?? -Infinity) : -Infinity;
 }
 
 function matchesNumericFilter(value, opId, valId) {
@@ -421,7 +434,9 @@ function matchesNumericFilter(value, opId, valId) {
 
 function compareFoods(a, b, field, dir) {
   let diff = 0;
-  if (field === "nutri") {
+  if (field === "name") {
+    diff = a.name.localeCompare(b.name);
+  } else if (field === "nutri") {
     diff = (NUTRI_RANK[a.nutri] || 0) - (NUTRI_RANK[b.nutri] || 0);
   } else {
     diff = (Number(getFoodMetricValue(a, field)) || 0) - (Number(getFoodMetricValue(b, field)) || 0);
@@ -516,13 +531,18 @@ function renderApp() {
 function renderCatalog() {
   const q = document.getElementById("searchInput").value.trim().toLowerCase();
   const nutriFilter = document.getElementById("filterNutri").value;
-  const sortField = document.getElementById("sortField").value;
   const sortDir = document.getElementById("sortDirBtn").dataset.dir || "desc";
   const activeCols = getActiveColumns();
+  const sortField = resolveSortField(activeCols);
   const arrow = sortDir === "asc" ? "↑" : "↓";
   const filterDetails = getActiveFilterDetails();
 
   updateFilterIndicators(filterDetails);
+
+  const activeColDef = ALL_COLUMN_DEFS.find(c => c.key === sortField);
+  const sortLabel = sortField === "name" ? "Product" : (activeColDef ? activeColDef.label : sortField);
+  document.getElementById("sortSummaryBadge").innerHTML =
+    `Sorted by: <strong>${escapeHtml(sortLabel)} ${arrow}</strong> <span class="hint-inline">(click any column header)</span>`;
 
   const filtered = foods
     .filter((f) => {
@@ -537,20 +557,22 @@ function renderCatalog() {
     })
     .sort((a, b) => compareFoods(a, b, sortField, sortDir));
 
-  const activeColDef = ALL_COLUMN_DEFS.find(c => c.key === sortField);
-  const sortLabel = activeColDef ? activeColDef.label : sortField;
   const filteredColsCount = Object.keys(filterDetails).length;
   const filterSummaryText = filteredColsCount > 0
     ? ` • ${filteredColsCount} column filter${filteredColsCount > 1 ? "s" : ""} active`
     : "";
 
   document.getElementById("filteredCount").textContent =
-    `Showing ${filtered.length} of ${foods.length} foods • Sorted by ${sortLabel} ${arrow}${filterSummaryText}`;
+    `Showing ${filtered.length} of ${foods.length} foods${filterSummaryText}`;
 
   if (filtered.length === 0) {
     document.getElementById("foodList").innerHTML = `<p class="hint" style="padding:12px;">No matching foods found.</p>`;
     return;
   }
+
+  const isNameSorted = sortField === "name";
+  const nameThClass = isNameSorted ? ' class="sortable-th sorted-col"' : ' class="sortable-th"';
+  const nameIndicator = isNameSorted ? `<span class="sort-indicator">${arrow}</span>` : "";
 
   const headerCells = activeCols.map((col) => {
     const isSorted = col.key === sortField;
@@ -568,12 +590,13 @@ function renderCatalog() {
   }).join("");
 
   const bodyRows = filtered.map((f) => {
+    const nameCellClass = isNameSorted ? ' class="sorted-col-cell"' : "";
     const metricCells = activeCols
       .map((col) => renderColumnCell(f, col.key, col.key === sortField, Boolean(filterDetails[col.key])))
       .join("");
     return `
       <tr>
-        <td><strong>${escapeHtml(f.name)}</strong></td>
+        <td${nameCellClass}><strong>${escapeHtml(f.name)}</strong></td>
         ${metricCells}
       </tr>
     `;
@@ -584,7 +607,7 @@ function renderCatalog() {
     <table class="food-table">
       <thead>
         <tr>
-          <th>Product</th>
+          <th${nameThClass} data-sort-col="name">Product${nameIndicator}</th>
           ${headerCells}
         </tr>
       </thead>
@@ -597,19 +620,18 @@ function renderCatalog() {
   container.querySelectorAll("th[data-sort-col]").forEach((th) => {
     th.addEventListener("click", () => {
       const colKey = th.dataset.sortCol;
-      const select = document.getElementById("sortField");
       const dirBtn = document.getElementById("sortDirBtn");
-      const hasOption = Array.from(select.options).some(opt => opt.value === colKey);
-      if (hasOption) {
-        if (select.value === colKey) {
-          const nextDir = dirBtn.dataset.dir === "desc" ? "asc" : "desc";
-          dirBtn.dataset.dir = nextDir;
-          dirBtn.textContent = nextDir === "desc" ? "↓ Desc" : "↑ Asc";
-        } else {
-          select.value = colKey;
-        }
-        renderCatalog();
+      if (currentSortField === colKey) {
+        const nextDir = dirBtn.dataset.dir === "desc" ? "asc" : "desc";
+        dirBtn.dataset.dir = nextDir;
+        dirBtn.textContent = nextDir === "desc" ? "↓ Desc" : "↑ Asc";
+      } else {
+        currentSortField = colKey;
+        const defaultDir = colKey === "name" ? "asc" : "desc";
+        dirBtn.dataset.dir = defaultDir;
+        dirBtn.textContent = defaultDir === "desc" ? "↓ Desc" : "↑ Asc";
       }
+      renderCatalog();
     });
   });
 }
@@ -653,7 +675,7 @@ document.getElementById("sortDirBtn").addEventListener("click", (e) => {
 document.getElementById("resetFiltersBtn").addEventListener("click", () => {
   document.getElementById("searchInput").value = "";
   document.getElementById("filterNutri").value = "ALL";
-  document.getElementById("sortField").value = "healthScore";
+  currentSortField = "healthScore";
   const dirBtn = document.getElementById("sortDirBtn");
   dirBtn.dataset.dir = "desc";
   dirBtn.textContent = "↓ Desc";
@@ -673,7 +695,6 @@ document.getElementById("resetFiltersBtn").addEventListener("click", () => {
 [
   "searchInput",
   "filterNutri",
-  "sortField",
   "opYuka", "valYuka",
   "opOff", "valOff",
   "opEpi", "valEpi",
