@@ -183,12 +183,25 @@
         </div>
       </div>
 
+      <!-- Column Visibility Picker (6 Possible Columns) -->
+      <div class="column-picker">
+        <span class="column-picker-title">Columns to Show</span>
+        <div class="column-toggles" id="columnToggles">
+          <label class="col-chip"><input type="checkbox" data-col="nutri" checked /> Nutri</label>
+          <label class="col-chip"><input type="checkbox" data-col="yuka" checked /> Yuka</label>
+          <label class="col-chip"><input type="checkbox" data-col="off" checked /> OFF</label>
+          <label class="col-chip"><input type="checkbox" data-col="epi" checked /> Epi Score</label>
+          <label class="col-chip"><input type="checkbox" data-col="healthScore" checked /> Health Score</label>
+          <label class="col-chip"><input type="checkbox" data-col="impact" checked /> Dietary Impact</label>
+        </div>
+      </div>
+
       <div class="catalog-meta-bar">
         <span id="filteredCount" class="hint">Showing 0 foods</span>
         <button type="button" id="resetFiltersBtn" class="btn btn-ghost">Reset Filters</button>
       </div>
 
-      <div id="foodList" class="list"></div>
+      <div id="foodList" class="table-wrap"></div>
     </div>
   </main>
 
