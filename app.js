@@ -49,6 +49,17 @@ let headerMap = {};
 let sheetSummary = {};
 let html5QrCode = null;
 
+function normKey(str) {
+  return String(str || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function parseNum(val) {
+  if (val === undefined || val === null || val === "") return null;
+  const cleaned = String(val).replace(/,/g, "").replace("%", "").trim();
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
 // --- Settings & Column Visibility Persistence ---
 const getSettings = () => ({
   clientId: localStorage.getItem("fht_client_id") || "",
@@ -79,7 +90,9 @@ function isEnergyGroupEnabled() {
 }
 
 function getActiveColumns() {
-  const cols = getCoreVisibleColumns().map(key => ALL_COLUMN_DEFS.find(c => c.key === key)).filter(Boolean);
+  const cols = getCoreVisibleColumns()
+    .map(key => ALL_COLUMN_DEFS.find(c => c.key === key))
+    .filter(Boolean);
   if (isNutrientsGroupEnabled()) {
     cols.push(...NUTRIENT_COLUMNS);
   }
@@ -119,6 +132,7 @@ document.getElementById("saveSettingsBtn").addEventListener("click", () => {
   document.getElementById("settingsPanel").classList.add("hidden");
 
   if (accessToken) {
+    lookupLoaded = false;
     fetchSheetData();
   } else {
     initGoogleAuth();
@@ -174,36 +188,40 @@ function computeHealthScore(nutriGrade, yuka, off, epi) {
 }
 
 // --- Google Sheets Read / Write ---
-async function fetchLookupDataIfNeeded() {
-  if (!accessToken || lookupLoaded) return;
+async function fetchLookupDataIfNeeded(force = false) {
+  if (!accessToken) return;
+  if (lookupLoaded && !force) return;
+
   const { sheetId } = getSettings();
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent("Lookup")}!A1:P200`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent("Lookup")}!A1:P250`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
   const data = await res.json();
-  if (data.error || !data.values || data.values.length < 2) return;
+  if (data.error || !data.values || data.values.length < 2) {
+    return;
+  }
 
   const map = {};
   data.values.slice(1).forEach((row) => {
-    const rawName = (row[0] || "").trim().toLowerCase();
-    if (!rawName) return;
-    map[rawName] = {
-      fiber: parseFloat(row[1]) || 0,
-      protein: parseFloat(row[2]) || 0,
-      potassium: parseFloat(row[3]) || 0,
-      magnesium: parseFloat(row[4]) || 0,
-      calcium: parseFloat(row[5]) || 0,
-      iron: parseFloat(row[6]) || 0,
-      vitC: parseFloat(row[7]) || 0,
-      vitA: parseFloat(row[8]) || 0,
-      vitB12: parseFloat(row[9]) || 0,
-      calories: parseFloat(row[10]) || 0,
-      totalFat: parseFloat(row[11]) || 0,
-      satFat: parseFloat(row[12]) || 0,
-      carbs: parseFloat(row[13]) || 0,
-      sugars: parseFloat(row[14]) || 0,
-      sodium: parseFloat(row[15]) || 0
+    const key = normKey(row[0]);
+    if (!key) return;
+    map[key] = {
+      fiber: parseNum(row[1]),
+      protein: parseNum(row[2]),
+      potassium: parseNum(row[3]),
+      magnesium: parseNum(row[4]),
+      calcium: parseNum(row[5]),
+      iron: parseNum(row[6]),
+      vitC: parseNum(row[7]),
+      vitA: parseNum(row[8]),
+      vitB12: parseNum(row[9]),
+      calories: parseNum(row[10]),
+      totalFat: parseNum(row[11]),
+      satFat: parseNum(row[12]),
+      carbs: parseNum(row[13]),
+      sugars: parseNum(row[14]),
+      sodium: parseNum(row[15])
     };
   });
 
@@ -216,7 +234,7 @@ async function fetchSheetData() {
   const { sheetId, sheetName } = getSettings();
   setStatus("Loading sheet...");
 
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName)}!A1:P200`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName)}!A1:P250`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
@@ -263,20 +281,20 @@ async function fetchSheetData() {
   foods = data.values.slice(1)
     .filter(row => row[headerMap.name >= 0 ? headerMap.name : 0])
     .map((row, idx) => {
-      const name = row[headerMap.name >= 0 ? headerMap.name : 0] || "";
+      const name = String(row[headerMap.name >= 0 ? headerMap.name : 0] || "").trim();
       const qtyLabel = headerMap.qtyLabel >= 0 ? (row[headerMap.qtyLabel] || "") : "";
       const nutri = (row[headerMap.nutri] || "C").toUpperCase();
-      const yuka = parseFloat(row[headerMap.yuka]) || 0;
-      const off = parseFloat(row[headerMap.off]) || 0;
-      const epi = headerMap.epi >= 0 && row[headerMap.epi] !== "" ? parseFloat(row[headerMap.epi]) : 50;
-      const sheetScore = headerMap.score >= 0 ? parseFloat(row[headerMap.score]) : NaN;
-      const healthScore = !isNaN(sheetScore) ? sheetScore : computeHealthScore(nutri, yuka, off, epi);
-      const grams = headerMap.grams >= 0 ? (parseFloat(row[headerMap.grams]) || 0) : 0;
-      const freq = headerMap.freq >= 0 ? (parseFloat(row[headerMap.freq]) || 0) : 0;
-      const weeklyGrams = headerMap.weeklyQty >= 0 && row[headerMap.weeklyQty] !== ""
-        ? (parseFloat(row[headerMap.weeklyQty]) || 0)
+      const yuka = parseNum(row[headerMap.yuka]) ?? 0;
+      const off = parseNum(row[headerMap.off]) ?? 0;
+      const epi = headerMap.epi >= 0 ? (parseNum(row[headerMap.epi]) ?? 50) : 50;
+      const sheetScore = headerMap.score >= 0 ? parseNum(row[headerMap.score]) : null;
+      const healthScore = sheetScore !== null ? sheetScore : computeHealthScore(nutri, yuka, off, epi);
+      const grams = headerMap.grams >= 0 ? (parseNum(row[headerMap.grams]) ?? 0) : 0;
+      const freq = headerMap.freq >= 0 ? (parseNum(row[headerMap.freq]) ?? 0) : 0;
+      const weeklyGrams = headerMap.weeklyQty >= 0 && parseNum(row[headerMap.weeklyQty]) !== null
+        ? parseNum(row[headerMap.weeklyQty])
         : grams * freq;
-      const impact = headerMap.impact >= 0 ? (parseFloat(row[headerMap.impact]) || 0) : 0;
+      const impact = headerMap.impact >= 0 ? (parseNum(row[headerMap.impact]) ?? 0) : 0;
 
       return { rowNumber: idx + 2, name, qtyLabel, nutri, yuka, off, epi, healthScore, grams, freq, weeklyGrams, impact };
     });
@@ -330,6 +348,12 @@ async function appendFoodRow(item) {
 }
 
 // --- Sorting & Filtering ---
+function getFoodMetricValue(food, field) {
+  if (field in food) return food[field];
+  const lookup = lookupByName[normKey(food.name)];
+  return lookup ? (lookup[field] ?? 0) : 0;
+}
+
 function matchesNumericFilter(value, opId, valId) {
   const op = document.getElementById(opId).value;
   const rawVal = document.getElementById(valId).value;
@@ -347,7 +371,7 @@ function compareFoods(a, b, field, dir) {
   if (field === "nutri") {
     diff = (NUTRI_RANK[a.nutri] || 0) - (NUTRI_RANK[b.nutri] || 0);
   } else {
-    diff = (Number(a[field]) || 0) - (Number(b[field]) || 0);
+    diff = (Number(getFoodMetricValue(a, field)) || 0) - (Number(getFoodMetricValue(b, field)) || 0);
   }
   if (diff === 0) {
     return a.name.localeCompare(b.name);
@@ -362,10 +386,12 @@ function scoreBadgeClass(score) {
   return "badge-low";
 }
 
-function formatMetricVal(val, decimals = 2) {
+function formatMetricVal(val) {
+  if (val === null || val === undefined) return "—";
   const n = Number(val);
-  if (!isFinite(n) || n === 0) return "0";
-  return Number.isInteger(n) ? String(n) : n.toFixed(decimals).replace(/\.?0+$/, "");
+  if (!isFinite(n)) return "—";
+  if (n === 0) return "0";
+  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
 }
 
 function renderColumnCell(food, colKey, isSortedCol) {
@@ -390,8 +416,8 @@ function renderColumnCell(food, colKey, isSortedCol) {
     return `<td${cls}>${Number(food.impact).toFixed(1)}</td>`;
   }
 
-  const lookup = lookupByName[food.name.trim().toLowerCase()] || {};
-  const val = lookup[colKey] ?? 0;
+  const lookup = lookupByName[normKey(food.name)];
+  const val = lookup ? lookup[colKey] : null;
   return `<td${cls}>${formatMetricVal(val)}</td>`;
 }
 
@@ -451,8 +477,10 @@ function renderCatalog() {
     })
     .sort((a, b) => compareFoods(a, b, sortField, sortDir));
 
+  const activeColDef = ALL_COLUMN_DEFS.find(c => c.key === sortField);
+  const sortLabel = activeColDef ? activeColDef.label : sortField;
   document.getElementById("filteredCount").textContent =
-    `Showing ${filtered.length} of ${foods.length} foods • Sorted by ${sortField} (${arrow})`;
+    `Showing ${filtered.length} of ${foods.length} foods • Sorted by ${sortLabel} ${arrow}`;
 
   if (filtered.length === 0) {
     document.getElementById("foodList").innerHTML = `<p class="hint" style="padding:12px;">No matching foods found.</p>`;
@@ -461,9 +489,9 @@ function renderCatalog() {
 
   const headerCells = activeCols.map((col) => {
     const isSorted = col.key === sortField;
-    const thClass = isSorted ? ' class="sorted-col"' : "";
+    const thClass = isSorted ? ' class="sortable-th sorted-col"' : ' class="sortable-th"';
     const indicator = isSorted ? `<span class="sort-indicator">${arrow}</span>` : "";
-    return `<th${thClass}>${escapeHtml(col.label)}${indicator}</th>`;
+    return `<th${thClass} data-sort-col="${col.key}">${escapeHtml(col.label)}${indicator}</th>`;
   }).join("");
 
   const bodyRows = filtered.map((f) => {
@@ -478,7 +506,8 @@ function renderCatalog() {
     `;
   }).join("");
 
-  document.getElementById("foodList").innerHTML = `
+  const container = document.getElementById("foodList");
+  container.innerHTML = `
     <table class="food-table">
       <thead>
         <tr>
@@ -491,6 +520,25 @@ function renderCatalog() {
       </tbody>
     </table>
   `;
+
+  container.querySelectorAll("th[data-sort-col]").forEach((th) => {
+    th.addEventListener("click", () => {
+      const colKey = th.dataset.sortCol;
+      const select = document.getElementById("sortField");
+      const dirBtn = document.getElementById("sortDirBtn");
+      const hasOption = Array.from(select.options).some(opt => opt.value === colKey);
+      if (hasOption) {
+        if (select.value === colKey) {
+          const nextDir = dirBtn.dataset.dir === "desc" ? "asc" : "desc";
+          dirBtn.dataset.dir = nextDir;
+          dirBtn.textContent = nextDir === "desc" ? "↓ Desc" : "↑ Asc";
+        } else {
+          select.value = colKey;
+        }
+        renderCatalog();
+      }
+    });
+  });
 }
 
 document.querySelectorAll('#columnToggles input[type="checkbox"]').forEach((cb) => {
@@ -504,12 +552,13 @@ document.querySelectorAll('#columnToggles input[type="checkbox"]').forEach((cb) 
 
 async function handleGroupToggle(storageKey, isChecked) {
   localStorage.setItem(storageKey, String(isChecked));
+  renderCatalog();
   if (isChecked && accessToken && !lookupLoaded) {
-    setStatus("Loading Lookup columns...");
+    setStatus("Loading Lookup tab columns...");
     await fetchLookupDataIfNeeded();
     setStatus(`Synced (${foods.length} items) • ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
+    renderCatalog();
   }
-  renderCatalog();
 }
 
 document.getElementById("toggleNutrientsGroup").addEventListener("change", (e) => {
