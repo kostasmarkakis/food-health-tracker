@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#10b981" />
+  <title>Food Health Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- Barcode Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>🥗 Food Health Tracker</h1>
+      <p id="syncStatus" class="subtitle">Not connected to Google Sheets</p>
+    </div>
+    <div class="auth-actions">
+      <button id="authBtn" class="btn btn-primary">Sign in with Google</button>
+      <button id="settingsToggleBtn" class="btn btn-ghost" title="Settings">⚙️</button>
+    </div>
+  </header>
+
+  <!-- Settings Drawer -->
+  <section id="settingsPanel" class="card hidden">
+    <h2>Connection Settings</h2>
+    <p class="hint">Stored locally in your browser only — never committed to GitHub.</p>
+    <label>
+      Google OAuth Client ID
+      <input type="text" id="clientIdInput" placeholder="123456789-xxxx.apps.googleusercontent.com" />
+    </label>
+    <label>
+      Google Spreadsheet ID
+      <input type="text" id="sheetIdInput" value="1X6ZyKBCrsx6eM8zWT15s_CDtFV4zZMlzCXpUoSsB54c" />
+    </label>
+    <label>
+      Main Sheet Tab Name
+      <input type="text" id="sheetNameInput" value="Sheet1" />
+    </label>
+    <div class="row-actions">
+      <button id="saveSettingsBtn" class="btn btn-primary">Save & Connect</button>
+    </div>
+  </section>
+
+  <!-- Navigation Tabs -->
+  <nav class="tabs">
+    <button class="tab active" data-tab="dashboard">Dashboard</button>
+    <button class="tab" data-tab="catalog">Foods (<span id="foodCount">0</span>)</button>
+    <button class="tab" data-tab="add">+ Add Food</button>
+  </nav>
+
+  <!-- Dashboard View -->
+  <main id="tab-dashboard" class="tab-content active">
+    <div class="kpi-grid">
+      <div class="card kpi">
+        <span class="kpi-label">Avg Product Health Score</span>
+        <strong id="avgScore" class="kpi-value">—</strong>
+      </div>
+      <div class="card kpi">
+        <span class="kpi-label">Diet-Weighted Score</span>
+        <strong id="weightedScore" class="kpi-value">—</strong>
+      </div>
+      <div class="card kpi">
+        <span class="kpi-label">Tracked Foods</span>
+        <strong id="totalItems" class="kpi-value">0</strong>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Top Weekly Drivers</h2>
+        <button id="refreshBtn" class="btn btn-ghost">↻ Sync</button>
+      </div>
+      <div id="topFoodsList" class="list"></div>
+    </div>
+  </main>
+
+  <!-- Food Catalog View -->
+  <main id="tab-catalog" class="tab-content">
+    <div class="card">
+      <input type="search" id="searchInput" placeholder="Search foods (e.g., Apple, Kimas, Baguette)..." />
+      <div id="foodList" class="list"></div>
+    </div>
+  </main>
+
+  <!-- Add Food View -->
+  <main id="tab-add" class="tab-content">
+    <div class="card">
+      <h2>Add Product to Google Sheet</h2>
+
+      <!-- Barcode Scanner Box -->
+      <div class="scanner-box">
+        <div class="row-actions">
+          <button type="button" id="scanBarcodeBtn" class="btn btn-secondary">📷 Scan Barcode (Open Food Facts)</button>
+          <button type="button" id="stopScanBtn" class="btn btn-ghost hidden">Stop Camera</button>
+        </div>
+        <div id="reader" class="hidden"></div>
+        <p id="offStatus" class="hint"></p>
+      </div>
+
+      <form id="addFoodForm">
+        <label>
+          Product Name *
+          <input type="text" id="fName" required placeholder="e.g., Greek Yogurt 2%" />
+        </label>
+
+        <div class="grid-2">
+          <label>
+            Nutri-Score (A–E) *
+            <select id="fNutri">
+              <option value="A">A (100)</option>
+              <option value="B" selected>B (75)</option>
+              <option value="C">C (50)</option>
+              <option value="D">D (25)</option>
+              <option value="E">E (0)</option>
+            </select>
+          </label>
+          <label>
+            Yuka Score (0–100) *
+            <input type="number" id="fYuka" min="0" max="100" step="1" required placeholder="e.g., 78" />
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label>
+            OFF Score (0–100) *
+            <input type="number" id="fOff" min="0" max="100" step="1" required placeholder="e.g., 75" />
+          </label>
+          <label>
+            Epi Score (0–100) *
+            <input type="number" id="fEpi" min="0" max="100" step="1" value="50" required />
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label>
+            Portion Size (grams)
+            <input type="number" id="fGrams" min="0" step="1" value="100" />
+          </label>
+          <label>
+            Weekly Frequency (times/wk)
+            <input type="number" id="fFreq" min="0" step="0.5" value="1" />
+          </label>
+        </div>
+
+        <div class="preview-box">
+          Calculated Health Score: <strong id="previewScore">—</strong>
+        </div>
+
+        <button type="submit" class="btn btn-primary full-width">Save to Google Sheet</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
