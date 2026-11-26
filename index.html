@@ -38,10 +38,10 @@
     </label>
     <label>
       Main Sheet Tab Name
-      <input type="text" id="sheetNameInput" value="Sheet1" />
+      <input type="text" id="sheetNameInput" value="Overall" />
     </label>
     <div class="row-actions">
-      <button id="saveSettingsBtn" class="btn btn-primary">Save & Connect</button>
+      <button id="saveSettingsBtn" class="btn btn-primary">Save & Sync</button>
     </div>
   </section>
 
@@ -56,11 +56,11 @@
   <main id="tab-dashboard" class="tab-content active">
     <div class="kpi-grid">
       <div class="card kpi">
-        <span class="kpi-label">Avg Product Health Score</span>
+        <span class="kpi-label">Overall Health Score</span>
         <strong id="avgScore" class="kpi-value">—</strong>
       </div>
       <div class="card kpi">
-        <span class="kpi-label">Diet-Weighted Score</span>
+        <span class="kpi-label">Food Quality Score</span>
         <strong id="weightedScore" class="kpi-value">—</strong>
       </div>
       <div class="card kpi">
@@ -81,7 +81,113 @@
   <!-- Food Catalog View -->
   <main id="tab-catalog" class="tab-content">
     <div class="card">
-      <input type="search" id="searchInput" placeholder="Search foods (e.g., Apple, Kimas, Baguette)..." />
+      <div class="catalog-top-row">
+        <input type="search" id="searchInput" placeholder="Search foods (e.g., Apple, Kimas, Baguette)..." />
+        <div class="sort-controls">
+          <label class="inline-field">
+            Sort by
+            <select id="sortField">
+              <option value="healthScore" selected>Health Score</option>
+              <option value="nutri">Nutri (A–E)</option>
+              <option value="yuka">Yuka</option>
+              <option value="off">OFF</option>
+              <option value="epi">Epi Score</option>
+              <option value="impact">Dietary Impact Score</option>
+            </select>
+          </label>
+          <button type="button" id="sortDirBtn" class="btn btn-ghost" data-dir="desc" title="Toggle sort direction">↓ Desc</button>
+        </div>
+      </div>
+
+      <div class="filter-grid">
+        <label class="inline-field">
+          Nutri
+          <select id="filterNutri">
+            <option value="ALL" selected>All (A–E)</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+            <option value="E">E</option>
+          </select>
+        </label>
+
+        <div class="inline-field">
+          <span>Yuka</span>
+          <div class="op-val-group">
+            <select id="opYuka">
+              <option value="any" selected>Any</option>
+              <option value="gt">&gt;</option>
+              <option value="gte">&gt;=</option>
+              <option value="lt">&lt;</option>
+              <option value="lte">&lt;=</option>
+            </select>
+            <input type="number" id="valYuka" step="any" placeholder="0–100" />
+          </div>
+        </div>
+
+        <div class="inline-field">
+          <span>OFF</span>
+          <div class="op-val-group">
+            <select id="opOff">
+              <option value="any" selected>Any</option>
+              <option value="gt">&gt;</option>
+              <option value="gte">&gt;=</option>
+              <option value="lt">&lt;</option>
+              <option value="lte">&lt;=</option>
+            </select>
+            <input type="number" id="valOff" step="any" placeholder="0–100" />
+          </div>
+        </div>
+
+        <div class="inline-field">
+          <span>Epi Score</span>
+          <div class="op-val-group">
+            <select id="opEpi">
+              <option value="any" selected>Any</option>
+              <option value="gt">&gt;</option>
+              <option value="gte">&gt;=</option>
+              <option value="lt">&lt;</option>
+              <option value="lte">&lt;=</option>
+            </select>
+            <input type="number" id="valEpi" step="any" placeholder="0–100" />
+          </div>
+        </div>
+
+        <div class="inline-field">
+          <span>Health Score</span>
+          <div class="op-val-group">
+            <select id="opHealth">
+              <option value="any" selected>Any</option>
+              <option value="gt">&gt;</option>
+              <option value="gte">&gt;=</option>
+              <option value="lt">&lt;</option>
+              <option value="lte">&lt;=</option>
+            </select>
+            <input type="number" id="valHealth" step="any" placeholder="0–100" />
+          </div>
+        </div>
+
+        <div class="inline-field">
+          <span>Dietary Impact</span>
+          <div class="op-val-group">
+            <select id="opImpact">
+              <option value="any" selected>Any</option>
+              <option value="gt">&gt;</option>
+              <option value="gte">&gt;=</option>
+              <option value="lt">&lt;</option>
+              <option value="lte">&lt;=</option>
+            </select>
+            <input type="number" id="valImpact" step="any" placeholder="Score" />
+          </div>
+        </div>
+      </div>
+
+      <div class="catalog-meta-bar">
+        <span id="filteredCount" class="hint">Showing 0 foods</span>
+        <button type="button" id="resetFiltersBtn" class="btn btn-ghost">Reset Filters</button>
+      </div>
+
       <div id="foodList" class="list"></div>
     </div>
   </main>
