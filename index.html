@@ -100,8 +100,11 @@
       </div>
 
       <div class="filter-grid">
-        <label class="inline-field">
-          Nutri
+        <div class="inline-field filter-card" data-filter-col="nutri">
+          <div class="filter-label-row">
+            <span>Nutri</span>
+            <span class="filter-badge hidden" id="badgeNutri">Filtered</span>
+          </div>
           <select id="filterNutri">
             <option value="ALL" selected>All (A–E)</option>
             <option value="A">A</option>
@@ -110,10 +113,13 @@
             <option value="D">D</option>
             <option value="E">E</option>
           </select>
-        </label>
+        </div>
 
-        <div class="inline-field">
-          <span>Yuka</span>
+        <div class="inline-field filter-card" data-filter-col="yuka">
+          <div class="filter-label-row">
+            <span>Yuka</span>
+            <span class="filter-badge hidden" id="badgeYuka">Filtered</span>
+          </div>
           <div class="op-val-group">
             <select id="opYuka">
               <option value="any" selected>Any</option>
@@ -124,8 +130,11 @@
           </div>
         </div>
 
-        <div class="inline-field">
-          <span>OFF</span>
+        <div class="inline-field filter-card" data-filter-col="off">
+          <div class="filter-label-row">
+            <span>Open Food Facts</span>
+            <span class="filter-badge hidden" id="badgeOff">Filtered</span>
+          </div>
           <div class="op-val-group">
             <select id="opOff">
               <option value="any" selected>Any</option>
@@ -136,8 +145,11 @@
           </div>
         </div>
 
-        <div class="inline-field">
-          <span>Epi Score</span>
+        <div class="inline-field filter-card" data-filter-col="epi">
+          <div class="filter-label-row">
+            <span>Epi Score</span>
+            <span class="filter-badge hidden" id="badgeEpi">Filtered</span>
+          </div>
           <div class="op-val-group">
             <select id="opEpi">
               <option value="any" selected>Any</option>
@@ -148,8 +160,11 @@
           </div>
         </div>
 
-        <div class="inline-field">
-          <span>Health Score</span>
+        <div class="inline-field filter-card" data-filter-col="healthScore">
+          <div class="filter-label-row">
+            <span>Health Score</span>
+            <span class="filter-badge hidden" id="badgeHealth">Filtered</span>
+          </div>
           <div class="op-val-group">
             <select id="opHealth">
               <option value="any" selected>Any</option>
@@ -160,8 +175,11 @@
           </div>
         </div>
 
-        <div class="inline-field">
-          <span>Dietary Impact</span>
+        <div class="inline-field filter-card" data-filter-col="impact">
+          <div class="filter-label-row">
+            <span>Dietary Impact</span>
+            <span class="filter-badge hidden" id="badgeImpact">Filtered</span>
+          </div>
           <div class="op-val-group">
             <select id="opImpact">
               <option value="any" selected>Any</option>

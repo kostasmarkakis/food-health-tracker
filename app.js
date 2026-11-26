@@ -348,6 +348,59 @@ async function appendFoodRow(item) {
 }
 
 // --- Sorting & Filtering ---
+function getActiveFilterDetails() {
+  const details = {};
+
+  const nutriVal = document.getElementById("filterNutri").value;
+  if (nutriVal !== "ALL") {
+    details.nutri = `= ${nutriVal}`;
+  }
+
+  const numericDefs = [
+    { key: "yuka", opId: "opYuka", valId: "valYuka" },
+    { key: "off", opId: "opOff", valId: "valOff" },
+    { key: "epi", opId: "opEpi", valId: "valEpi" },
+    { key: "healthScore", opId: "opHealth", valId: "valHealth" },
+    { key: "impact", opId: "opImpact", valId: "valImpact" }
+  ];
+
+  numericDefs.forEach(({ key, opId, valId }) => {
+    const op = document.getElementById(opId).value;
+    const rawVal = document.getElementById(valId).value;
+    if (op !== "any" && rawVal !== "" && !Number.isNaN(parseFloat(rawVal))) {
+      const symbol = op === "gte" ? "≥" : "≤";
+      details[key] = `${symbol} ${parseFloat(rawVal)}`;
+    }
+  });
+
+  return details;
+}
+
+function updateFilterIndicators(filterDetails) {
+  const indicatorMap = [
+    { key: "nutri", badgeId: "badgeNutri" },
+    { key: "yuka", badgeId: "badgeYuka" },
+    { key: "off", badgeId: "badgeOff" },
+    { key: "epi", badgeId: "badgeEpi" },
+    { key: "healthScore", badgeId: "badgeHealth" },
+    { key: "impact", badgeId: "badgeImpact" }
+  ];
+
+  indicatorMap.forEach(({ key, badgeId }) => {
+    const detail = filterDetails[key];
+    const badge = document.getElementById(badgeId);
+    const card = document.querySelector(`.filter-card[data-filter-col="${key}"]`);
+    if (detail) {
+      badge.textContent = detail;
+      badge.classList.remove("hidden");
+      if (card) card.classList.add("is-filtered");
+    } else {
+      badge.classList.add("hidden");
+      if (card) card.classList.remove("is-filtered");
+    }
+  });
+}
+
 function getFoodMetricValue(food, field) {
   if (field in food) return food[field];
   const lookup = lookupByName[normKey(food.name)];
@@ -394,8 +447,12 @@ function formatMetricVal(val) {
   return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
 }
 
-function renderColumnCell(food, colKey, isSortedCol) {
-  const cls = isSortedCol ? ' class="sorted-col-cell"' : "";
+function renderColumnCell(food, colKey, isSortedCol, isFilteredCol) {
+  const classes = [];
+  if (isSortedCol) classes.push("sorted-col-cell");
+  if (isFilteredCol) classes.push("filtered-col-cell");
+  const cls = classes.length ? ` class="${classes.join(" ")}"` : "";
+
   if (colKey === "nutri") {
     return `<td${cls}><strong>${escapeHtml(food.nutri)}</strong></td>`;
   }
@@ -463,6 +520,9 @@ function renderCatalog() {
   const sortDir = document.getElementById("sortDirBtn").dataset.dir || "desc";
   const activeCols = getActiveColumns();
   const arrow = sortDir === "asc" ? "↑" : "↓";
+  const filterDetails = getActiveFilterDetails();
+
+  updateFilterIndicators(filterDetails);
 
   const filtered = foods
     .filter((f) => {
@@ -479,8 +539,13 @@ function renderCatalog() {
 
   const activeColDef = ALL_COLUMN_DEFS.find(c => c.key === sortField);
   const sortLabel = activeColDef ? activeColDef.label : sortField;
+  const filteredColsCount = Object.keys(filterDetails).length;
+  const filterSummaryText = filteredColsCount > 0
+    ? ` • ${filteredColsCount} column filter${filteredColsCount > 1 ? "s" : ""} active`
+    : "";
+
   document.getElementById("filteredCount").textContent =
-    `Showing ${filtered.length} of ${foods.length} foods • Sorted by ${sortLabel} ${arrow}`;
+    `Showing ${filtered.length} of ${foods.length} foods • Sorted by ${sortLabel} ${arrow}${filterSummaryText}`;
 
   if (filtered.length === 0) {
     document.getElementById("foodList").innerHTML = `<p class="hint" style="padding:12px;">No matching foods found.</p>`;
@@ -489,14 +554,22 @@ function renderCatalog() {
 
   const headerCells = activeCols.map((col) => {
     const isSorted = col.key === sortField;
-    const thClass = isSorted ? ' class="sortable-th sorted-col"' : ' class="sortable-th"';
-    const indicator = isSorted ? `<span class="sort-indicator">${arrow}</span>` : "";
-    return `<th${thClass} data-sort-col="${col.key}">${escapeHtml(col.label)}${indicator}</th>`;
+    const filterExpr = filterDetails[col.key];
+    const thClasses = ["sortable-th"];
+    if (isSorted) thClasses.push("sorted-col");
+    if (filterExpr) thClasses.push("filtered-col-th");
+
+    const sortIndicator = isSorted ? `<span class="sort-indicator">${arrow}</span>` : "";
+    const filterTag = filterExpr
+      ? `<span class="filter-col-tag" title="Filtered: ${escapeHtml(filterExpr)}">⚡ ${escapeHtml(filterExpr)}</span>`
+      : "";
+
+    return `<th class="${thClasses.join(" ")}" data-sort-col="${col.key}">${escapeHtml(col.label)}${sortIndicator}${filterTag}</th>`;
   }).join("");
 
   const bodyRows = filtered.map((f) => {
     const metricCells = activeCols
-      .map((col) => renderColumnCell(f, col.key, col.key === sortField))
+      .map((col) => renderColumnCell(f, col.key, col.key === sortField, Boolean(filterDetails[col.key])))
       .join("");
     return `
       <tr>
