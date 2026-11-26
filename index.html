@@ -117,9 +117,7 @@
           <div class="op-val-group">
             <select id="opYuka">
               <option value="any" selected>Any</option>
-              <option value="gt">&gt;</option>
               <option value="gte">&gt;=</option>
-              <option value="lt">&lt;</option>
               <option value="lte">&lt;=</option>
             </select>
             <input type="number" id="valYuka" step="any" placeholder="0–100" />
@@ -131,9 +129,7 @@
           <div class="op-val-group">
             <select id="opOff">
               <option value="any" selected>Any</option>
-              <option value="gt">&gt;</option>
               <option value="gte">&gt;=</option>
-              <option value="lt">&lt;</option>
               <option value="lte">&lt;=</option>
             </select>
             <input type="number" id="valOff" step="any" placeholder="0–100" />
@@ -145,9 +141,7 @@
           <div class="op-val-group">
             <select id="opEpi">
               <option value="any" selected>Any</option>
-              <option value="gt">&gt;</option>
               <option value="gte">&gt;=</option>
-              <option value="lt">&lt;</option>
               <option value="lte">&lt;=</option>
             </select>
             <input type="number" id="valEpi" step="any" placeholder="0–100" />
@@ -159,9 +153,7 @@
           <div class="op-val-group">
             <select id="opHealth">
               <option value="any" selected>Any</option>
-              <option value="gt">&gt;</option>
               <option value="gte">&gt;=</option>
-              <option value="lt">&lt;</option>
               <option value="lte">&lt;=</option>
             </select>
             <input type="number" id="valHealth" step="any" placeholder="0–100" />
@@ -173,9 +165,7 @@
           <div class="op-val-group">
             <select id="opImpact">
               <option value="any" selected>Any</option>
-              <option value="gt">&gt;</option>
               <option value="gte">&gt;=</option>
-              <option value="lt">&lt;</option>
               <option value="lte">&lt;=</option>
             </select>
             <input type="number" id="valImpact" step="any" placeholder="Score" />
@@ -183,7 +173,7 @@
         </div>
       </div>
 
-      <!-- Column Visibility Picker (6 Possible Columns) -->
+      <!-- Column Visibility Picker (6 Core Columns + Nutrients & Energy Groups) -->
       <div class="column-picker">
         <span class="column-picker-title">Columns to Show</span>
         <div class="column-toggles" id="columnToggles">
@@ -193,6 +183,11 @@
           <label class="col-chip"><input type="checkbox" data-col="epi" checked /> Epi Score</label>
           <label class="col-chip"><input type="checkbox" data-col="healthScore" checked /> Health Score</label>
           <label class="col-chip"><input type="checkbox" data-col="impact" checked /> Dietary Impact</label>
+        </div>
+
+        <div class="column-group-row">
+          <label class="col-chip col-chip-group"><input type="checkbox" id="toggleNutrientsGroup" /> Nutrients (Lookup)</label>
+          <label class="col-chip col-chip-group"><input type="checkbox" id="toggleEnergyGroup" /> Energy &amp; Macros (Lookup)</label>
         </div>
       </div>
 
