@@ -1,5 +1,6 @@
 const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 const NUTRI_MAP = { A: 100, B: 75, C: 50, D: 25, E: 0 };
+const NUTRI_RANK = { A: 5, B: 4, C: 3, D: 2, E: 1 };
 
 let tokenClient = null;
 let accessToken = null;
@@ -35,6 +36,7 @@ document.getElementById("saveSettingsBtn").addEventListener("click", () => {
   localStorage.setItem("fht_sheet_name", document.getElementById("sheetNameInput").value.trim() || "Overall");
   document.getElementById("settingsPanel").classList.add("hidden");
 
+  // Reuse existing access token without forcing a reconnect when already signed in
   if (accessToken) {
     fetchSheetData();
   } else {
@@ -100,7 +102,13 @@ async function fetchSheetData() {
   const data = await res.json();
 
   if (data.error) {
-    setStatus("Sheet error: " + data.error.message);
+    if (res.status === 401) {
+      accessToken = null;
+      document.getElementById("authBtn").textContent = "Sign in with Google";
+      setStatus("Session expired — click Sign in with Google");
+    } else {
+      setStatus("Sheet error: " + data.error.message);
+    }
     return;
   }
 
@@ -197,6 +205,34 @@ async function appendFoodRow(item) {
   }
 }
 
+// --- Sorting & Filtering ---
+function matchesNumericFilter(value, opId, valId) {
+  const op = document.getElementById(opId).value;
+  const rawVal = document.getElementById(valId).value;
+  if (op === "any" || rawVal === "") return true;
+  const threshold = parseFloat(rawVal);
+  if (isNaN(threshold)) return true;
+
+  if (op === "gt") return value > threshold;
+  if (op === "gte") return value >= threshold;
+  if (op === "lt") return value < threshold;
+  if (op === "lte") return value <= threshold;
+  return true;
+}
+
+function compareFoods(a, b, field, dir) {
+  let diff = 0;
+  if (field === "nutri") {
+    diff = (NUTRI_RANK[a.nutri] || 0) - (NUTRI_RANK[b.nutri] || 0);
+  } else {
+    diff = (Number(a[field]) || 0) - (Number(b[field]) || 0);
+  }
+  if (diff === 0) {
+    return a.name.localeCompare(b.name);
+  }
+  return dir === "asc" ? diff : -diff;
+}
+
 // --- Rendering ---
 function scoreBadgeClass(score) {
   if (score >= 70) return "badge-high";
@@ -237,24 +273,78 @@ function renderApp() {
     </div>
   `).join("");
 
-  renderCatalog(document.getElementById("searchInput").value);
+  renderCatalog();
 }
 
-function renderCatalog(filter = "") {
-  const q = filter.trim().toLowerCase();
-  const filtered = foods.filter(f => f.name.toLowerCase().includes(q));
-  document.getElementById("foodList").innerHTML = filtered.map(f => `
+function renderCatalog() {
+  const q = document.getElementById("searchInput").value.trim().toLowerCase();
+  const nutriFilter = document.getElementById("filterNutri").value;
+  const sortField = document.getElementById("sortField").value;
+  const sortDir = document.getElementById("sortDirBtn").dataset.dir || "desc";
+
+  const filtered = foods
+    .filter((f) => {
+      if (q && !f.name.toLowerCase().includes(q)) return false;
+      if (nutriFilter !== "ALL" && f.nutri !== nutriFilter) return false;
+      if (!matchesNumericFilter(f.yuka, "opYuka", "valYuka")) return false;
+      if (!matchesNumericFilter(f.off, "opOff", "valOff")) return false;
+      if (!matchesNumericFilter(f.epi, "opEpi", "valEpi")) return false;
+      if (!matchesNumericFilter(f.healthScore, "opHealth", "valHealth")) return false;
+      if (!matchesNumericFilter(f.impact, "opImpact", "valImpact")) return false;
+      return true;
+    })
+    .sort((a, b) => compareFoods(a, b, sortField, sortDir));
+
+  document.getElementById("filteredCount").textContent = `Showing ${filtered.length} of ${foods.length} foods`;
+
+  document.getElementById("foodList").innerHTML = filtered.map((f) => `
     <div class="food-item">
       <div>
         <strong>${escapeHtml(f.name)}</strong>
-        <div class="food-meta">Nutri: ${f.nutri} | Yuka: ${f.yuka} | OFF: ${f.off} | Epi: ${f.epi} | ${f.weeklyGrams}g/wk</div>
+        <div class="food-meta">Nutri: ${f.nutri} | Yuka: ${f.yuka} | OFF: ${f.off} | Epi: ${f.epi} | Impact: ${Number(f.impact).toFixed(1)} | ${f.weeklyGrams}g/wk</div>
       </div>
       <span class="badge ${scoreBadgeClass(f.healthScore)}">${f.healthScore.toFixed(1)}</span>
     </div>
   `).join("") || `<p class="hint">No matching foods found.</p>`;
 }
 
-document.getElementById("searchInput").addEventListener("input", (e) => renderCatalog(e.target.value));
+document.getElementById("sortDirBtn").addEventListener("click", (e) => {
+  const btn = e.currentTarget;
+  const nextDir = btn.dataset.dir === "desc" ? "asc" : "desc";
+  btn.dataset.dir = nextDir;
+  btn.textContent = nextDir === "desc" ? "↓ Desc" : "↑ Asc";
+  renderCatalog();
+});
+
+document.getElementById("resetFiltersBtn").addEventListener("click", () => {
+  document.getElementById("searchInput").value = "";
+  document.getElementById("filterNutri").value = "ALL";
+  document.getElementById("sortField").value = "healthScore";
+  const dirBtn = document.getElementById("sortDirBtn");
+  dirBtn.dataset.dir = "desc";
+  dirBtn.textContent = "↓ Desc";
+  ["opYuka", "opOff", "opEpi", "opHealth", "opImpact"].forEach((id) => {
+    document.getElementById(id).value = "any";
+  });
+  ["valYuka", "valOff", "valEpi", "valHealth", "valImpact"].forEach((id) => {
+    document.getElementById(id).value = "";
+  });
+  renderCatalog();
+});
+
+[
+  "searchInput",
+  "filterNutri",
+  "sortField",
+  "opYuka", "valYuka",
+  "opOff", "valOff",
+  "opEpi", "valEpi",
+  "opHealth", "valHealth",
+  "opImpact", "valImpact"
+].forEach((id) => {
+  document.getElementById(id).addEventListener("input", renderCatalog);
+  document.getElementById(id).addEventListener("change", renderCatalog);
+});
 
 // --- Add Form & Live Preview ---
 function updatePreview() {
